@@ -49,7 +49,7 @@ export default async function TeacherDashboardPage() {
           {courses.map((course: any) => (
             <Link
               key={course.id}
-              href={`/dashboard/courses/${course.id}`}
+              href={`/dashboard/teacher/courses/${course.id}`}
               className="block p-4 border rounded hover:bg-gray-50"
             >
               <h2 className="text-xl font-semibold">{course.title}</h2>
