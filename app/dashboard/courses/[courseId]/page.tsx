@@ -39,7 +39,7 @@ export default async function CourseDetailPage({ params }: { params: { courseId:
           <h2 className="text-2xl font-semibold mb-3">{module.title}</h2>
           
           <ul className="space-y-2">
-            {module.lessons.map((lesson:lesson) => (
+            {module.lessons.map((lesson:Lesson) => (
               <li key={lesson.id}>
                 <a 
                   href={`/dashboard/courses/${params.courseId}/lessons/${lesson.id}`}
