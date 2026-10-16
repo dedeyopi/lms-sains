@@ -1,6 +1,18 @@
 import { createClient } from '@/lib/supabase/server'
 import { notFound } from 'next/navigation'
 
+// Tambahkan ini di atas file, setelah import
+type Lesson = {
+  id: string
+  title: string
+}
+
+type Module = {
+  id: string
+  title: string
+  lessons: Lesson[]
+}
+
 export default async function CourseDetailPage({ params }: { params: { courseId: string } }) {
   const supabase = await createClient()
 
@@ -27,7 +39,7 @@ export default async function CourseDetailPage({ params }: { params: { courseId:
           <h2 className="text-2xl font-semibold mb-3">{module.title}</h2>
           
           <ul className="space-y-2">
-            {module.lessons.map((lesson) => (
+            {module.lessons.map((lesson:lesson) => (
               <li key={lesson.id}>
                 <a 
                   href={`/dashboard/courses/${params.courseId}/lessons/${lesson.id}`}
