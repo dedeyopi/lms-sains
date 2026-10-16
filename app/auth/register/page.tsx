@@ -8,6 +8,7 @@ export default function RegisterPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [fullName, setFullName] = useState('')
+  const [role, setRole] = useState<'student' | 'teacher'>('student') // <-- State baru
   const [loading, setLoading] = useState(false)
   const router = useRouter()
   const supabase = createClient()
@@ -16,14 +17,13 @@ export default function RegisterPage() {
     e.preventDefault()
     setLoading(true)
 
-    // 1. Daftarkan user ke sistem autentikasi Supabase
-    const { data, error } = await supabase.auth.signUp({
+    const { error } = await supabase.auth.signUp({
       email,
       password,
       options: {
-        // 2. Kirim nama lengkap sebagai metadata (data tambahan)
         data: {
           full_name: fullName,
+          role: role, // <-- Kirim role ke metadata
         }
       }
     })
@@ -31,8 +31,8 @@ export default function RegisterPage() {
     if (error) {
       alert('Gagal mendaftar: ' + error.message)
     } else {
-      alert('Registrasi berhasil! Silakan cek email Anda untuk verifikasi, atau langsung login.')
-      router.push('/auth/login') // Arahkan ke halaman login setelah sukses
+      alert('Registrasi berhasil! Silakan login.')
+      router.push('/auth/login')
     }
     setLoading(false)
   }
@@ -44,26 +44,31 @@ export default function RegisterPage() {
       <input
         type="text" placeholder="Nama Lengkap" value={fullName}
         onChange={(e) => setFullName(e.target.value)}
-        className="w-full p-2 border rounded mb-3"
-        required
+        className="w-full p-2 border rounded mb-3" required
       />
       <input
         type="email" placeholder="Email" value={email}
         onChange={(e) => setEmail(e.target.value)}
-        className="w-full p-2 border rounded mb-3"
-        required
+        className="w-full p-2 border rounded mb-3" required
       />
       <input
         type="password" placeholder="Password (min. 6 karakter)" value={password}
         onChange={(e) => setPassword(e.target.value)}
-        className="w-full p-2 border rounded mb-3"
-        required
-        minLength={6}
+        className="w-full p-2 border rounded mb-3" required minLength={6}
       />
       
+      {/* Pilihan Role */}
+      <select
+        value={role}
+        onChange={(e) => setRole(e.target.value as 'student' | 'teacher')}
+        className="w-full p-2 border rounded mb-3"
+      >
+        <option value="student">Siswa</option>
+        <option value="teacher">Guru</option>
+      </select>
+      
       <button 
-        type="submit" 
-        disabled={loading}
+        type="submit" disabled={loading}
         className="w-full bg-green-600 text-white p-2 rounded hover:bg-green-700 disabled:bg-gray-400"
       >
         {loading ? 'Memproses...' : 'Daftar'}
