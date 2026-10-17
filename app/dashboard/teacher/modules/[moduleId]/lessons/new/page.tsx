@@ -62,35 +62,62 @@ export default function NewLessonPage({
         <div>
           <label className="block mb-1 font-medium">Tipe Konten</label>
           <select
-            value={contentType}
-            onChange={(e) => setContentType(e.target.value)}
-            className="w-full p-2 border rounded"
-          >
-            <option value="text">Teks Bacaan</option>
-            <option value="video_link">Video YouTube</option>
-            <option value="simulation_embed">Simulasi PhET</option>
-          </select>
+  value={contentType}
+  onChange={(e) => setContentType(e.target.value)}
+  className="w-full p-2 border rounded"
+>
+  <option value="text">📝 Teks Bacaan</option>
+  <option value="video_link">🎥 Video YouTube</option>
+  <option value="simulation_embed">🔬 Simulasi PhET</option>
+  <option value="web_embed">📱 Aplikasi Web / Canva</option>
+  <option value="external_link">🔗 Tautan Eksternal</option>
+</select>
         </div>
 
         <div>
-          <label className="block mb-1 font-medium">
-            {contentType === 'text' && 'Isi Teks Materi'}
-            {contentType === 'video_link' && 'URL Video YouTube'}
-            {contentType === 'simulation_embed' && 'URL Embed Simulasi PhET'}
-          </label>
-          <textarea
-            value={content}
-            onChange={(e) => setContent(e.target.value)}
-            className="w-full p-2 border rounded font-mono text-sm"
-            rows={contentType === 'text' ? 10 : 3}
-            required
-            placeholder={
-              contentType === 'text'
-                ? 'Tuliskan materi pelajaran lengkap di sini...'
-                : 'https://...'
-            }
-          />
-        </div>
+  <label className="block mb-1 font-medium">
+    {contentType === 'text' && 'Isi Teks Materi'}
+    {contentType === 'video_link' && 'URL Video YouTube'}
+    {contentType === 'simulation_embed' && 'URL Embed Simulasi PhET'}
+    {contentType === 'web_embed' && 'URL Embed Aplikasi Web / Canva'}
+    {contentType === 'external_link' && 'URL Tautan Eksternal'}
+  </label>
+  <textarea
+    value={content}
+    onChange={(e) => setContent(e.target.value)}
+    className="w-full p-2 border rounded font-mono text-sm"
+    rows={contentType === 'text' ? 10 : 3}
+    required
+    placeholder={
+      contentType === 'text'
+        ? 'Tuliskan materi pelajaran lengkap di sini...'
+        : contentType === 'video_link'
+        ? 'Contoh: https://www.youtube.com/watch?v=XXXXX'
+        : contentType === 'simulation_embed'
+        ? 'https://phet.colorado.edu/sims/html/...'
+        : contentType === 'web_embed'
+        ? 'https://www.canva.com/design/XXXXX/view?embed'
+        : 'https://...'
+    }
+  />
+
+  {/* Panduan untuk Canva */}
+  {contentType === 'web_embed' && (
+    <div className="text-xs text-gray-600 mt-2 bg-purple-50 p-3 rounded">
+      <p className="font-semibold mb-1">🎨 Cara Embed Canva:</p>
+      <ol className="list-decimal ml-4 space-y-1">
+        <li>Buka presentasi Canva Anda</li>
+        <li>Klik <strong>Share</strong> → <strong>More</strong> → <strong>Embed</strong></li>
+        <li>Salin kode <code>&lt;iframe&gt;</code> yang muncul</li>
+        <li>Ambil hanya URL di dalam <code>src="..."</code>, contohnya:<br/>
+          <code className="text-xs break-all">https://www.canva.com/design/DAF.../view?embed</code>
+        </li>
+        <li>Tempel URL tersebut di kolom di atas</li>
+      </ol>
+      <p className="mt-2">💡 Bisa juga untuk <strong>GeoGebra</strong>, <strong>Desmos</strong>, <strong>Google Slides</strong> (Publish to web), dan aplikasi web lainnya yang mendukung embed.</p>
+    </div>
+  )}
+</div>
 
         <div>
           <label className="block mb-1 font-medium">Urutan Pelajaran</label>
