@@ -78,6 +78,7 @@ export default function EditLessonPage({
             <option value="simulation_embed">🔬 Simulasi PhET</option>
             <option value="web_embed">📱 Aplikasi Web / Canva</option>
             <option value="external_link">🔗 Tautan Eksternal</option>
+            <option value="quiz">❓ Kuis</option>
           </select>
         </div>
 
