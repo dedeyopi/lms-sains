@@ -71,14 +71,22 @@ export default async function TeacherCourseDetailPage({
 
       <main className="max-w-4xl mx-auto px-6 py-8">
         <div className="flex justify-between items-center mb-6">
-          <h2 className="text-2xl font-bold">Modul Pembelajaran</h2>
-          <Link
-            href={`/dashboard/teacher/courses/${courseId}/modules/new`}
-            className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 text-sm"
-          >
-            + Tambah Modul
-          </Link>
-        </div>
+  <h2 className="text-2xl font-bold">Modul Pembelajaran</h2>
+  <div className="flex gap-3">
+    <Link 
+      href={`/dashboard/teacher/courses/${courseId}/students`}
+      className="bg-white border border-gray-300 text-gray-700 px-4 py-2 rounded hover:bg-gray-50 text-sm font-medium transition"
+    >
+      📊 Lihat Progres Siswa
+    </Link>
+    <Link
+      href={`/dashboard/teacher/courses/${courseId}/modules/new`}
+      className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 text-sm font-medium transition"
+    >
+      + Tambah Modul
+    </Link>
+  </div>
+</div>
 
         {modules && modules.length > 0 ? (
           <div className="space-y-6">
