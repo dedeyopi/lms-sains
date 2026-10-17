@@ -1,6 +1,8 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect, notFound } from 'next/navigation'
 import Link from 'next/link'
+import { revalidatePath } from 'next/cache'
+import DeleteButton from '@/app/components/DeleteButton'
 
 export const dynamic = 'force-dynamic'
 
@@ -12,30 +14,40 @@ export default async function TeacherCourseDetailPage({
   const { courseId } = await params
   const supabase = await createClient()
 
-  // 1. Cek user login
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/auth/login')
 
-  // 2. Ambil data kursus & pastikan ini kursus milik guru ini
   const { data: course } = await supabase
     .from('courses')
     .select('*')
     .eq('id', courseId)
     .single()
 
-  if (!course || course.teacher_id !== user.id) {
-    return notFound()
-  }
+  if (!course || course.teacher_id !== user.id) return notFound()
 
-  // 3. Ambil modul beserta pelajarannya
   const { data: modules } = await supabase
     .from('modules')
-    .select(`
-      *,
-      lessons (*)
-    `)
+    .select(`*, lessons (*)`)
     .eq('course_id', courseId)
     .order('order_index', { ascending: true })
+
+  // --- SERVER ACTIONS UNTUK HAPUS ---
+  async function deleteModule(formData: FormData) {
+    'use server'
+    const moduleId = formData.get('moduleId') as string
+    const supabase = await createClient()
+    await supabase.from('modules').delete().eq('id', moduleId)
+    revalidatePath(`/dashboard/teacher/courses/${courseId}`)
+  }
+
+  async function deleteLesson(formData: FormData) {
+    'use server'
+    const lessonId = formData.get('lessonId') as string
+    const supabase = await createClient()
+    await supabase.from('lessons').delete().eq('id', lessonId)
+    revalidatePath(`/dashboard/teacher/courses/${courseId}`)
+  }
+  // ----------------------------------
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -64,36 +76,58 @@ export default async function TeacherCourseDetailPage({
           <div className="space-y-6">
             {modules.map((module: any) => (
               <div key={module.id} className="bg-white rounded-lg shadow-sm border p-6">
-                <div className="flex justify-between items-start mb-4">
+                <div className="flex justify-between items-start mb-4 border-b pb-4">
                   <div>
                     <h3 className="text-xl font-bold">{module.title}</h3>
+                    <span className="text-xs text-gray-500">Urutan: {module.order_index}</span>
                   </div>
-                  <Link
-                    href={`/dashboard/teacher/modules/${module.id}/lessons/new`}
-                    className="bg-green-600 text-white px-3 py-1 rounded text-sm hover:bg-green-700"
-                  >
-                    + Pelajaran
-                  </Link>
+                  <div className="flex items-center gap-4">
+                    <Link
+                      href={`/dashboard/teacher/courses/${courseId}/modules/${module.id}/edit`}
+                      className="text-blue-600 hover:underline text-sm"
+                    >
+                      Edit Modul
+                    </Link>
+                    <form action={deleteModule}>
+                      <input type="hidden" name="moduleId" value={module.id} />
+                      <DeleteButton>Hapus Modul</DeleteButton>
+                    </form>
+                    <Link
+                      href={`/dashboard/teacher/modules/${module.id}/lessons/new`}
+                      className="bg-green-600 text-white px-3 py-1 rounded text-sm hover:bg-green-700 ml-2"
+                    >
+                      + Pelajaran
+                    </Link>
+                  </div>
                 </div>
 
                 {module.lessons && module.lessons.length > 0 ? (
                   <ul className="space-y-2">
-                    {module.lessons.map((lesson: any) => (
-                      <li
-                        key={lesson.id}
-                        className="flex items-center justify-between p-3 bg-gray-50 rounded"
-                      >
-                        <span className="font-medium">{lesson.title}</span>
-                        <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded uppercase">
-                          {lesson.content_type}
-                        </span>
+                    {module.lessons.sort((a: any, b: any) => a.order_index - b.order_index).map((lesson: any) => (
+                      <li key={lesson.id} className="flex items-center justify-between p-3 bg-gray-50 rounded border">
+                        <div className="flex items-center gap-3">
+                           <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded uppercase min-w-[80px] text-center">
+                            {lesson.content_type.replace('_', ' ')}
+                          </span>
+                          <span className="font-medium">{lesson.title}</span>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <Link
+                            href={`/dashboard/teacher/modules/${module.id}/lessons/${lesson.id}/edit`}
+                            className="text-blue-600 hover:underline text-sm"
+                          >
+                            Edit
+                          </Link>
+                          <form action={deleteLesson}>
+                            <input type="hidden" name="lessonId" value={lesson.id} />
+                            <DeleteButton>Hapus</DeleteButton>
+                          </form>
+                        </div>
                       </li>
                     ))}
                   </ul>
                 ) : (
-                  <p className="text-gray-500 text-sm italic">
-                    Belum ada pelajaran di modul ini.
-                  </p>
+                  <p className="text-gray-500 text-sm italic">Belum ada pelajaran di modul ini.</p>
                 )}
               </div>
             ))}
@@ -101,12 +135,6 @@ export default async function TeacherCourseDetailPage({
         ) : (
           <div className="bg-white p-12 rounded-lg shadow-sm border text-center">
             <p className="text-gray-500 mb-4">Belum ada modul di kursus ini.</p>
-            <Link
-              href={`/dashboard/teacher/courses/${courseId}/modules/new`}
-              className="text-blue-600 hover:underline"
-            >
-              Buat modul pertama Anda &rarr;
-            </Link>
           </div>
         )}
       </main>
