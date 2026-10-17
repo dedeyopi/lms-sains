@@ -18,11 +18,15 @@ export default function NewCoursePage() {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
 
+    // Buat kode acak 6 karakter untuk enrollment
+    const generatedCode = Math.random().toString(36).substring(2, 8).toUpperCase()
+
     const { error } = await supabase.from('courses').insert({
       title,
       description,
       subject,
       teacher_id: user.id,
+      enrollment_code: generatedCode,
     })
 
     if (error) {

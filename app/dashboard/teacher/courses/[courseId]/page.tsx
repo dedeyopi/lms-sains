@@ -14,32 +14,23 @@ export default async function TeacherCourseDetailPage({
   const { courseId } = await params
   const supabase = await createClient()
 
-  // 1. Cek user login
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/auth/login')
 
-  // 2. Ambil data kursus & pastikan ini kursus milik guru ini
   const { data: course } = await supabase
     .from('courses')
     .select('*')
     .eq('id', courseId)
     .single()
 
-  if (!course || course.teacher_id !== user.id) {
-    return notFound()
-  }
+  if (!course || course.teacher_id !== user.id) return notFound()
 
-  // 3. Ambil modul beserta pelajarannya
   const { data: modules } = await supabase
     .from('modules')
-    .select(`
-      *,
-      lessons (*)
-    `)
+    .select(`*, lessons (*)`)
     .eq('course_id', courseId)
     .order('order_index', { ascending: true })
 
-  // --- SERVER ACTIONS UNTUK HAPUS ---
   async function deleteModule(formData: FormData) {
     'use server'
     const moduleId = formData.get('moduleId') as string
@@ -55,7 +46,6 @@ export default async function TeacherCourseDetailPage({
     await supabase.from('lessons').delete().eq('id', lessonId)
     revalidatePath(`/dashboard/teacher/courses/${courseId}`)
   }
-  // ----------------------------------
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -64,29 +54,40 @@ export default async function TeacherCourseDetailPage({
           <Link href="/dashboard/teacher" className="text-blue-600 hover:underline text-sm">
             &larr; Kembali ke Dasbor Guru
           </Link>
-          <h1 className="text-2xl font-bold mt-2">{course.title}</h1>
-          <p className="text-gray-600 text-sm">{course.description}</p>
+          <div className="flex items-end justify-between mt-2">
+            <div>
+              <h1 className="text-2xl font-bold">{course.title}</h1>
+              <p className="text-gray-600 text-sm">{course.description}</p>
+            </div>
+            {/* KODE KELAS */}
+            <div className="bg-blue-50 border border-blue-200 px-4 py-2 rounded-lg text-center">
+              <span className="text-xs text-blue-600 font-semibold block mb-1">Kode Kelas</span>
+              <span className="text-2xl font-mono font-bold text-blue-800 tracking-wider">
+                {course.enrollment_code}
+              </span>
+            </div>
+          </div>
         </div>
       </header>
 
       <main className="max-w-4xl mx-auto px-6 py-8">
         <div className="flex justify-between items-center mb-6">
-  <h2 className="text-2xl font-bold">Modul Pembelajaran</h2>
-  <div className="flex gap-3">
-    <Link 
-      href={`/dashboard/teacher/courses/${courseId}/students`}
-      className="bg-white border border-gray-300 text-gray-700 px-4 py-2 rounded hover:bg-gray-50 text-sm font-medium transition"
-    >
-      📊 Lihat Progres Siswa
-    </Link>
-    <Link
-      href={`/dashboard/teacher/courses/${courseId}/modules/new`}
-      className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 text-sm font-medium transition"
-    >
-      + Tambah Modul
-    </Link>
-  </div>
-</div>
+          <h2 className="text-2xl font-bold">Modul Pembelajaran</h2>
+          <div className="flex gap-3">
+            <Link 
+              href={`/dashboard/teacher/courses/${courseId}/students`}
+              className="bg-white border border-gray-300 text-gray-700 px-4 py-2 rounded hover:bg-gray-50 text-sm font-medium transition"
+            >
+              📊 Lihat Progres Siswa
+            </Link>
+            <Link
+              href={`/dashboard/teacher/courses/${courseId}/modules/new`}
+              className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 text-sm font-medium transition"
+            >
+              + Tambah Modul
+            </Link>
+          </div>
+        </div>
 
         {modules && modules.length > 0 ? (
           <div className="space-y-6">
@@ -129,7 +130,6 @@ export default async function TeacherCourseDetailPage({
                         </div>
                         <div className="flex items-center gap-4">
                           
-                          {/* TOMBOL KELOLA SOAL (Hanya muncul jika tipe = quiz) */}
                           {lesson.content_type === 'quiz' && (
                             <Link
                               href={`/dashboard/teacher/modules/${module.id}/lessons/${lesson.id}/questions`}

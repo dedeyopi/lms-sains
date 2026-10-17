@@ -16,7 +16,27 @@ export default async function StudentCourseDetailPage({
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/auth/login')
 
-  // 2. Ambil data kursus
+  // 2. CEK ENROLLMENT (Apakah siswa terdaftar di kelas ini?)
+  const { data: enrollment } = await supabase
+    .from('enrollments')
+    .select('id')
+    .eq('course_id', courseId)
+    .eq('student_id', user.id)
+    .single()
+
+  if (!enrollment) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center p-8 bg-white rounded-lg shadow-md border max-w-md">
+          <h1 className="text-2xl font-bold text-red-600 mb-2">Akses Ditolak</h1>
+          <p className="text-gray-600 mb-6">Anda belum terdaftar di kelas ini. Silakan kembali ke dasbor dan masukkan kode kelas yang benar.</p>
+          <Link href="/dashboard" className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition">Kembali ke Dasbor</Link>
+        </div>
+      </div>
+    )
+  }
+
+  // 3. Ambil data kursus
   const { data: course } = await supabase
     .from('courses')
     .select('*')
@@ -25,7 +45,7 @@ export default async function StudentCourseDetailPage({
 
   if (!course) return notFound()
 
-  // 3. Ambil modul beserta pelajaran
+  // 4. Ambil modul beserta pelajaran
   const { data: modules } = await supabase
     .from('modules')
     .select(`
@@ -35,7 +55,7 @@ export default async function StudentCourseDetailPage({
     .eq('course_id', courseId)
     .order('order_index', { ascending: true })
 
-  // 4. Ambil progres siswa untuk kursus ini
+  // 5. Ambil progres siswa untuk kursus ini
   const { data: progress } = await supabase
     .from('student_progress')
     .select('lesson_id, completed')
@@ -97,6 +117,8 @@ export default async function StudentCourseDetailPage({
                                 {lesson.content_type === 'text' && 'Teks'}
                                 {lesson.content_type === 'video_link' && 'Video'}
                                 {lesson.content_type === 'simulation_embed' && 'Simulasi'}
+                                {lesson.content_type === 'web_embed' && 'Web'}
+                                {lesson.content_type === 'external_link' && 'Link'}
                                 {lesson.content_type === 'quiz' && 'Kuis'}
                               </span>
                             </Link>
