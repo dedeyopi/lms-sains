@@ -14,20 +14,28 @@ export default async function TeacherCourseDetailPage({
   const { courseId } = await params
   const supabase = await createClient()
 
+  // 1. Cek user login
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/auth/login')
 
+  // 2. Ambil data kursus & pastikan ini kursus milik guru ini
   const { data: course } = await supabase
     .from('courses')
     .select('*')
     .eq('id', courseId)
     .single()
 
-  if (!course || course.teacher_id !== user.id) return notFound()
+  if (!course || course.teacher_id !== user.id) {
+    return notFound()
+  }
 
+  // 3. Ambil modul beserta pelajarannya
   const { data: modules } = await supabase
     .from('modules')
-    .select(`*, lessons (*)`)
+    .select(`
+      *,
+      lessons (*)
+    `)
     .eq('course_id', courseId)
     .order('order_index', { ascending: true })
 
@@ -111,7 +119,18 @@ export default async function TeacherCourseDetailPage({
                           </span>
                           <span className="font-medium">{lesson.title}</span>
                         </div>
-                        <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-4">
+                          
+                          {/* TOMBOL KELOLA SOAL (Hanya muncul jika tipe = quiz) */}
+                          {lesson.content_type === 'quiz' && (
+                            <Link
+                              href={`/dashboard/teacher/modules/${module.id}/lessons/${lesson.id}/questions`}
+                              className="text-emerald-600 hover:underline text-sm font-semibold"
+                            >
+                              Kelola Soal
+                            </Link>
+                          )}
+
                           <Link
                             href={`/dashboard/teacher/modules/${module.id}/lessons/${lesson.id}/edit`}
                             className="text-blue-600 hover:underline text-sm"

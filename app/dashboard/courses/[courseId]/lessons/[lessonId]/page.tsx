@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect, notFound } from 'next/navigation'
 import Link from 'next/link'
 import { revalidatePath } from 'next/cache'
+import QuizPlayer from '@/app/components/QuizPlayer'
 
 export const dynamic = 'force-dynamic'
 
@@ -80,6 +81,17 @@ export default async function StudentLessonPage({
 
   const isCompleted = progress?.completed === true
 
+  // 5. Ambil soal kuis jika tipe pelajaran adalah kuis
+  let quizQuestions: any[] = []
+  if (lesson.content_type === 'quiz') {
+    const { data: questions } = await supabase
+      .from('quiz_questions')
+      .select('id, question_text, options')
+      .eq('lesson_id', lessonId)
+    
+    if (questions) quizQuestions = questions
+  }
+
   return (
     <div className="min-h-screen bg-gray-50 pb-20">
       {/* Header Navigasi */}
@@ -141,32 +153,29 @@ export default async function StudentLessonPage({
           )}
 
           {/* Aplikasi Web / Canva */}
-{lesson.content_type === 'web_embed' && (
-  <div>
-    {/* Banner Peringatan & Tombol Alternatif */}
-    <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-4 flex flex-col sm:flex-row items-center justify-between gap-3">
-      <p className="text-sm text-amber-800">
-        Sebagian situs membatasi tampilan di dalam iframe. Jika materi tidak muncul, buka langsung di tab baru.
-      </p>
-      <a
-        href={lesson.content}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="bg-amber-600 text-white px-4 py-2 rounded hover:bg-amber-700 text-sm font-medium whitespace-nowrap"
-      >
-        ↗ Buka di Tab Baru
-      </a>
-    </div>
-
-    {/* Iframe tetap ditampilkan sebagai upaya pertama */}
-    <iframe
-      src={lesson.content}
-      className="w-full h-[500px] md:h-[600px] border rounded"
-      allowFullScreen
-      allow="camera; microphone; fullscreen; clipboard-read; clipboard-write"
-    />
-  </div>
-)}
+          {lesson.content_type === 'web_embed' && (
+            <div>
+              <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-4 flex flex-col sm:flex-row items-center justify-between gap-3">
+                <p className="text-sm text-amber-800">
+                  Sebagian situs membatasi tampilan di dalam iframe. Jika materi tidak muncul, buka langsung di tab baru.
+                </p>
+                <a
+                  href={lesson.content}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="bg-amber-600 text-white px-4 py-2 rounded hover:bg-amber-700 text-sm font-medium whitespace-nowrap"
+                >
+                  ↗ Buka di Tab Baru
+                </a>
+              </div>
+              <iframe
+                src={lesson.content}
+                className="w-full h-[500px] md:h-[600px] border rounded"
+                allowFullScreen
+                allow="camera; microphone; fullscreen; clipboard-read; clipboard-write"
+              />
+            </div>
+          )}
 
           {/* Tautan Eksternal */}
           {lesson.content_type === 'external_link' && (
@@ -185,10 +194,20 @@ export default async function StudentLessonPage({
             </div>
           )}
 
-          {/* Kuis (Placeholder) */}
+          {/* Kuis */}
           {lesson.content_type === 'quiz' && (
-            <div className="text-center p-10 bg-gray-50 rounded">
-              <p className="text-gray-500">Fitur kuis sedang dalam pengembangan.</p>
+            <div>
+              {quizQuestions.length > 0 ? (
+                <QuizPlayer 
+                  lessonId={lessonId} 
+                  questions={quizQuestions} 
+                  userId={user.id} 
+                />
+              ) : (
+                <div className="text-center p-10 bg-gray-50 rounded">
+                  <p className="text-gray-500">Guru belum menambahkan soal untuk kuis ini.</p>
+                </div>
+              )}
             </div>
           )}
         </div>
