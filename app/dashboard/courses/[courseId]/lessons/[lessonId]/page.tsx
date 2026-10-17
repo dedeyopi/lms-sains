@@ -141,22 +141,32 @@ export default async function StudentLessonPage({
           )}
 
           {/* Aplikasi Web / Canva */}
-          {lesson.content_type === 'web_embed' && (
-            <div>
-              <iframe
-                src={lesson.content}
-                className="w-full h-[500px] md:h-[600px] border rounded"
-                allowFullScreen
-                allow="camera; microphone; fullscreen; clipboard-read; clipboard-write"
-              />
-              <p className="text-xs text-gray-500 mt-2 text-center">
-                Jika konten tidak muncul,{' '}
-                <a href={lesson.content} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline">
-                  buka di tab baru
-                </a>.
-              </p>
-            </div>
-          )}
+{lesson.content_type === 'web_embed' && (
+  <div>
+    {/* Banner Peringatan & Tombol Alternatif */}
+    <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-4 flex flex-col sm:flex-row items-center justify-between gap-3">
+      <p className="text-sm text-amber-800">
+        Sebagian situs membatasi tampilan di dalam iframe. Jika materi tidak muncul, buka langsung di tab baru.
+      </p>
+      <a
+        href={lesson.content}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="bg-amber-600 text-white px-4 py-2 rounded hover:bg-amber-700 text-sm font-medium whitespace-nowrap"
+      >
+        ↗ Buka di Tab Baru
+      </a>
+    </div>
+
+    {/* Iframe tetap ditampilkan sebagai upaya pertama */}
+    <iframe
+      src={lesson.content}
+      className="w-full h-[500px] md:h-[600px] border rounded"
+      allowFullScreen
+      allow="camera; microphone; fullscreen; clipboard-read; clipboard-write"
+    />
+  </div>
+)}
 
           {/* Tautan Eksternal */}
           {lesson.content_type === 'external_link' && (
