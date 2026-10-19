@@ -39,15 +39,19 @@ export default async function StudentAnalyticsPage({
     .select('id, full_name')
     .eq('role', 'student')
 
-  // 4. Ambil semua progres siswa untuk kursus ini
-  const { data: allProgress } = await supabase
-    .from('student_progress')
-    .select('student_id, lesson_id, completed')
-    .in('lesson_id', allLessonIds)
-    .eq('completed', true)
+  // 4. Ambil semua progres siswa untuk kursus ini (Hanya jika ada pelajaran)
+  let allProgress: any[] = []
+  if (allLessonIds.length > 0) {
+    const { data } = await supabase
+      .from('student_progress')
+      .select('student_id, lesson_id, completed')
+      .in('lesson_id', allLessonIds)
+      .eq('completed', true)
+    if (data) allProgress = data
+  }
 
   // 5. Ambil semua nilai kuis untuk kursus ini
-  // Kita ambil soal kuis yang ada di kursus ini
+  let quizResponses: any[] = []
   const { data: quizLessons } = await supabase
     .from('lessons')
     .select('id')
@@ -56,20 +60,22 @@ export default async function StudentAnalyticsPage({
   
   const quizLessonIds = quizLessons?.map(l => l.id) || []
 
-  // Ambil jawaban siswa yang benar
-  const { data: quizResponses } = await supabase
-    .from('quiz_responses')
-    .select('student_id, is_correct, quiz_questions!inner(lesson_id, points)')
-    .in('quiz_questions.lesson_id', quizLessonIds)
+  if (quizLessonIds.length > 0) {
+    const { data } = await supabase
+      .from('quiz_responses')
+      .select('student_id, is_correct, quiz_questions!inner(lesson_id, points)')
+      .in('quiz_questions.lesson_id', quizLessonIds)
+    if (data) quizResponses = data
+  }
 
   // --- OLAH DATA UNTUK DITAMPILKAN ---
   const studentData = students?.map(student => {
     // Hitung pelajaran selesai
-    const completedCount = allProgress?.filter(p => p.student_id === student.id).length || 0
+    const completedCount = allProgress.filter(p => p.student_id === student.id).length
     const progressPercentage = totalLessons > 0 ? Math.round((completedCount / totalLessons) * 100) : 0
 
     // Hitung nilai kuis
-    const studentResponses = quizResponses?.filter(r => r.student_id === student.id) || []
+    const studentResponses = quizResponses.filter(r => r.student_id === student.id)
     const totalScore = studentResponses.filter(r => r.is_correct).reduce((sum, r) => sum + (r.quiz_questions as any).points, 0)
     const maxScore = studentResponses.reduce((sum, r) => sum + (r.quiz_questions as any).points, 0)
 
