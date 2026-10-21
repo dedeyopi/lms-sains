@@ -14,82 +14,86 @@ async function logout() {
 
 export default async function DashboardPage() {
   const supabase = await createClient()
-
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/auth/login')
 
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('full_name, role')
-    .eq('id', user.id)
-    .single()
+  const { data: profile } = await supabase.from('profiles').select('full_name, role').eq('id', user.id).single()
 
-  // Ambil kursus yang HANYA diikuti oleh siswa ini
   const { data: enrollments } = await supabase
     .from('enrollments')
-    .select(`
-      course_id,
-      courses (
-        id, title, description, subject
-      )
-    `)
+    .select(`course_id, courses (id, title, description, subject)`)
     .eq('student_id', user.id)
 
-  // Ekstrak data kursus dari hasil join
   const myCourses = enrollments?.map((e: any) => e.courses).filter(Boolean) || []
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <header className="bg-white shadow-sm border-b">
+    <div className="min-h-screen bg-slate-50 pb-20">
+      {/* Navbar Modern */}
+      <nav className="bg-white border-b border-slate-200 sticky top-0 z-50">
         <div className="max-w-6xl mx-auto px-6 py-4 flex justify-between items-center">
-          <h1 className="text-2xl font-bold text-gray-800">LMS Sains</h1>
+          <Link href="/dashboard" className="flex items-center gap-2">
+            <span className="text-2xl">🧪</span>
+            <span className="text-xl font-bold text-slate-800 tracking-tight">SciSphere</span>
+          </Link>
           <div className="flex items-center gap-4">
             {profile?.role === 'teacher' && (
-              <Link href="/dashboard/teacher" className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 text-sm">
-                Dasbor Guru
+              <Link href="/dashboard/teacher" className="bg-blue-50 text-blue-700 px-4 py-2 rounded-xl text-sm font-semibold hover:bg-blue-100 transition">
+                Mode Guru
               </Link>
             )}
-            <span className="text-gray-600 text-sm hidden md:block">
-              Halo, {profile?.full_name || 'Pengguna'}
-            </span>
+            <div className="flex items-center gap-2 bg-slate-50 px-3 py-1.5 rounded-full border border-slate-200">
+              <div className="w-6 h-6 bg-blue-600 rounded-full flex items-center justify-center text-xs text-white font-bold">
+                {profile?.full_name?.charAt(0).toUpperCase()}
+              </div>
+              <span className="text-sm font-medium text-slate-700 hidden sm:block">{profile?.full_name}</span>
+            </div>
             <form action={logout}>
-              <button type="submit" className="text-red-600 hover:underline text-sm font-medium">
+              <button type="submit" className="text-sm font-medium text-red-600 hover:text-red-700 bg-red-50 px-3 py-1.5 rounded-lg transition">
                 Logout
               </button>
             </form>
           </div>
         </div>
-      </header>
+      </nav>
 
-      <main className="max-w-6xl mx-auto px-6 py-8">
-        
-        {/* Tampilkan form gabung kelas HANYA jika dia siswa */}
-        {profile?.role === 'student' && (
-          <JoinCourseForm userId={user.id} />
-        )}
+      <main className="max-w-6xl mx-auto px-6 py-10">
+        {/* Header & Form Join */}
+        <div className="bg-gradient-to-r from-blue-600 to-teal-500 rounded-3xl p-8 md:p-12 mb-10 text-white shadow-xl relative overflow-hidden flex flex-col md:flex-row items-center justify-between gap-8">
+          <div className="absolute inset-0 bg-[linear-gradient(to_right,#ffffff12_1px,transparent_1px),linear-gradient(to_bottom,#ffffff12_1px,transparent_1px)] bg-[size:24px_24px]"></div>
+          <div className="relative z-10 flex-1">
+            <h1 className="text-3xl md:text-4xl font-bold mb-3">Halo, {profile?.full_name?.split(' ')[0]}! 👋</h1>
+            <p className="text-blue-100 text-lg">Siap untuk menjelajahi hal baru hari ini? Masukkan kode kelas dari gurumu untuk memulai.</p>
+          </div>
+          <div className="relative z-10 w-full md:w-96">
+            {profile?.role === 'student' && <JoinCourseForm userId={user.id} />}
+          </div>
+        </div>
 
-        <h2 className="text-3xl font-bold mb-6 text-gray-800">Kelas Saya</h2>
+        <h2 className="text-2xl font-bold text-slate-800 mb-6 flex items-center gap-2">
+          📚 Kelas yang Diikuti
+        </h2>
         
         {myCourses.length > 0 ? (
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
             {myCourses.map((course: any) => (
-              <Link
-                key={course.id}
-                href={`/dashboard/courses/${course.id}`}
-                className="block bg-white p-6 rounded-lg shadow-sm border hover:shadow-md transition"
-              >
-                <span className="text-xs font-semibold text-blue-600 uppercase tracking-wide">
-                  {course.subject}
-                </span>
-                <h3 className="text-xl font-bold mt-2 mb-2">{course.title}</h3>
-                <p className="text-gray-600 line-clamp-3">{course.description}</p>
+              <Link key={course.id} href={`/dashboard/courses/${course.id}`}
+                className="group block bg-white p-6 rounded-2xl shadow-sm border border-slate-200 hover:shadow-lg hover:border-blue-300 transition-all duration-300">
+                <div className="flex justify-between items-start mb-4">
+                  <span className="text-xs font-bold text-blue-600 bg-blue-50 px-3 py-1 rounded-full uppercase tracking-wide">
+                    {course.subject}
+                  </span>
+                  <span className="text-slate-300 group-hover:text-blue-500 transition">&rarr;</span>
+                </div>
+                <h3 className="text-xl font-bold text-slate-800 mb-2 group-hover:text-blue-700 transition">{course.title}</h3>
+                <p className="text-slate-500 text-sm line-clamp-2">{course.description}</p>
               </Link>
             ))}
           </div>
         ) : (
-          <div className="bg-white p-12 rounded-lg shadow-sm border text-center">
-            <p className="text-gray-500 mb-4">Anda belum bergabung dengan kelas mana pun.</p>
-            <p className="text-sm text-gray-400">Mintalah kode kelas kepada guru Anda, lalu masukkan di form di atas.</p>
+          <div className="bg-white p-12 rounded-3xl border border-slate-200 text-center shadow-sm">
+            <div className="text-5xl mb-4">🏫</div>
+            <h3 className="text-xl font-bold text-slate-700 mb-2">Belum Ada Kelas</h3>
+            <p className="text-slate-500">Anda belum bergabung dengan kelas mana pun. Mintalah kode kelas kepada guru Anda.</p>
           </div>
         )}
       </main>
