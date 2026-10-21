@@ -7,16 +7,18 @@ export default function QuizPlayer({
   lessonId, 
   questions, 
   userId,
-  courseId // Pastikan prop ini ada
+  courseId,
+  previousResult // <-- PROP BARU: Untuk menerima nilai dari server
 }: { 
   lessonId: string, 
   questions: any[], 
   userId: string,
-  courseId: string 
+  courseId: string,
+  previousResult?: { totalScore: number, maxScore: number } | null
 }) {
   const [answers, setAnswers] = useState<Record<string, string>>({})
   const [loading, setLoading] = useState(false)
-  const [result, setResult] = useState<any>(null)
+  const [result, setResult] = useState<any>(previousResult || null) // Inisialisasi dengan nilai sebelumnya
   const supabase = createClient()
   const router = useRouter()
 
@@ -33,36 +35,34 @@ export default function QuizPlayer({
       answer: answers[qId]
     }))
 
-    // Panggil Edge Function
     const { data, error } = await supabase.functions.invoke('grade-quiz', {
       body: { answers: formattedAnswers, studentId: userId, lessonId: lessonId }
     })
 
     if (error) {
-      alert('Gagal mengirim jawaban. Pastikan koneksi internet stabil. Error: ' + error.message)
+      alert('Gagal mengirim jawaban: ' + error.message)
       setLoading(false)
       return
     }
 
-    // Set hasil untuk menampilkan layar skor
     setResult(data)
     setLoading(false)
   }
 
-  // JIKA RESULT ADA, TAMPILKAN LAYAR SKOR
+  // JIKA SUDAH ADA NILAI (BARU SELESAI ATAU SUDAH PERNAH MENGERJAKAN)
   if (result) {
     return (
-      <div className="text-center p-8 bg-green-50 rounded-2xl border border-green-200">
-        <h2 className="text-2xl font-bold text-green-800 mb-2">Kuis Selesai! 🎉</h2>
-        <p className="text-gray-700 mb-4">Skor Anda:</p>
-        <div className="text-6xl font-black text-green-600 mb-6">
-          {result.totalScore} <span className="text-3xl text-green-400">/ {result.maxScore}</span>
+      <div className="text-center p-8 bg-emerald-50 rounded-2xl border border-emerald-200">
+        <div className="text-5xl mb-4">🏆</div>
+        <h2 className="text-2xl font-bold text-emerald-800 mb-2">Kuis Sudah Selesai</h2>
+        <p className="text-emerald-700 mb-4">Anda telah menyelesaikan kuis ini dengan skor:</p>
+        <div className="text-6xl font-black text-emerald-600 mb-6">
+          {result.totalScore} <span className="text-3xl text-emerald-400">/ {result.maxScore}</span>
         </div>
         
-        {/* TOMBOL INI YANG MENGARAHKAN KEMBALI KE DAFTAR MATERI */}
         <button 
           onClick={() => router.push(`/dashboard/courses/${courseId}`)} 
-          className="bg-green-600 text-white px-8 py-3 rounded-xl font-bold hover:bg-green-700 transition shadow-lg shadow-green-600/30"
+          className="bg-emerald-600 text-white px-8 py-3 rounded-xl font-bold hover:bg-emerald-700 transition shadow-lg shadow-emerald-600/30"
         >
           Kembali ke Daftar Materi
         </button>
@@ -70,7 +70,7 @@ export default function QuizPlayer({
     )
   }
 
-  // JIKA BELUM SELESAI, TAMPILKAN SOAL
+  // JIKA BELUM PERNAH MENGERJAKAN, TAMPILKAN SOAL
   return (
     <div className="space-y-6">
       {questions.map((q, index) => (

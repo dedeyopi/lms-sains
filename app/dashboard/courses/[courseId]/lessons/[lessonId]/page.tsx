@@ -6,16 +6,12 @@ import QuizPlayer from '@/app/components/QuizPlayer'
 
 export const dynamic = 'force-dynamic'
 
-// Fungsi bantuan untuk mengubah URL YouTube biasa menjadi URL embed
 function getYouTubeEmbedUrl(url: string): string {
   const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/
   const match = url.match(regExp)
-  return match && match[2].length === 11
-    ? `https://www.youtube.com/embed/${match[2]}`
-    : url
+  return match && match[2].length === 11 ? `https://www.youtube.com/embed/${match[2]}` : url
 }
 
-// Server Action untuk menandai pelajaran sebagai selesai
 async function markAsCompleted(formData: FormData) {
   'use server'
   const supabase = await createClient()
@@ -25,15 +21,10 @@ async function markAsCompleted(formData: FormData) {
   const lessonId = formData.get('lessonId') as string
   const courseId = formData.get('courseId') as string
 
-  // Simpan atau perbarui progres siswa
   await supabase.from('student_progress').upsert({
-    student_id: user.id,
-    lesson_id: lessonId,
-    completed: true,
-    completed_at: new Date().toISOString(),
+    student_id: user.id, lesson_id: lessonId, completed: true, completed_at: new Date().toISOString(),
   }, { onConflict: 'student_id, lesson_id' })
 
-  // Refresh halaman agar tombol berubah status
   revalidatePath(`/dashboard/courses/${courseId}/lessons/${lessonId}`)
 }
 
@@ -45,62 +36,62 @@ export default async function StudentLessonPage({
   const { courseId, lessonId } = await params
   const supabase = await createClient()
 
-  // 1. Cek user login
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/auth/login')
 
-  // 2. Ambil detail pelajaran
   const { data: lesson, error } = await supabase
     .from('lessons')
-    .select(`
-      *,
-      modules!inner (
-        title,
-        course_id
-      )
-    `)
+    .select(`*, modules!inner (title, course_id)`)
     .eq('id', lessonId)
     .single()
 
   if (error || !lesson) return notFound()
 
-  // 3. Ambil judul kursus
-  const { data: course } = await supabase
-    .from('courses')
-    .select('title')
-    .eq('id', courseId)
-    .single()
-
-  // 4. Cek apakah pelajaran ini sudah diselesaikan oleh siswa
+  const { data: course } = await supabase.from('courses').select('title').eq('id', courseId).single()
+  
   const { data: progress } = await supabase
     .from('student_progress')
     .select('completed')
     .eq('student_id', user.id)
     .eq('lesson_id', lessonId)
     .single()
-
+    
   const isCompleted = progress?.completed === true
 
-  // 5. Ambil soal kuis jika tipe pelajaran adalah kuis
+  // --- LOGIKA KUIS ---
   let quizQuestions: any[] = []
+  let previousResult = null
+
   if (lesson.content_type === 'quiz') {
     const { data: questions } = await supabase
       .from('quiz_questions')
       .select('id, question_text, options')
       .eq('lesson_id', lessonId)
-    
     if (questions) quizQuestions = questions
+
+    // Cek apakah siswa sudah pernah mengerjakan kuis ini
+    if (quizQuestions.length > 0) {
+      const questionIds = quizQuestions.map(q => q.id)
+      const { data: responses } = await supabase
+        .from('quiz_responses')
+        .select('is_correct, quiz_questions!inner(points)')
+        .eq('student_id', user.id)
+        .in('question_id', questionIds)
+
+      // Jika ada respons, hitung total skornya
+      if (responses && responses.length > 0) {
+        const totalScore = responses.filter(r => r.is_correct).reduce((sum, r) => sum + (r.quiz_questions as any).points, 0)
+        const maxScore = responses.reduce((sum, r) => sum + (r.quiz_questions as any).points, 0)
+        previousResult = { totalScore, maxScore }
+      }
+    }
   }
 
   return (
     <div className="min-h-screen bg-slate-50 pb-20">
-      {/* Header Navigasi */}
       <header className="bg-white border-b border-slate-200 sticky top-0 z-10 shadow-sm">
         <div className="max-w-4xl mx-auto px-6 py-4 flex items-center gap-4">
-          <Link 
-            href={`/dashboard/courses/${courseId}`} 
-            className="text-blue-600 hover:text-blue-800 bg-blue-50 px-3 py-2 rounded-xl transition font-medium text-sm flex items-center gap-1"
-          >
+          <Link href={`/dashboard/courses/${courseId}`} className="text-blue-600 hover:text-blue-800 bg-blue-50 px-3 py-2 rounded-xl transition font-medium text-sm flex items-center gap-1">
             &larr; Kembali
           </Link>
           <div className="text-sm text-slate-500 font-medium truncate">
@@ -110,7 +101,6 @@ export default async function StudentLessonPage({
       </header>
 
       <main className="max-w-4xl mx-auto px-6 py-8">
-        {/* Judul Pelajaran */}
         <div className="mb-8 text-center">
           <span className="inline-block mb-3 text-xs bg-teal-50 text-teal-700 px-3 py-1 rounded-full uppercase font-bold tracking-wider border border-teal-100">
             {lesson.content_type.replace('_', ' ')}
@@ -118,10 +108,8 @@ export default async function StudentLessonPage({
           <h1 className="text-3xl md:text-4xl font-bold text-slate-800">{lesson.title}</h1>
         </div>
 
-        {/* Konten Pembelajaran (Card) */}
         <div className="bg-white p-6 md:p-10 rounded-3xl shadow-sm border border-slate-200 mb-8 min-h-[300px]">
           
-          {/* Teks Bacaan */}
           {lesson.content_type === 'text' && (
             <div className="prose prose-slate max-w-none text-slate-700 leading-relaxed">
               {lesson.content.split('\n').map((paragraph: string, i: number) => (
@@ -130,45 +118,34 @@ export default async function StudentLessonPage({
             </div>
           )}
 
-          {/* Video YouTube */}
           {lesson.content_type === 'video_link' && (
             <div className="aspect-video w-full rounded-2xl overflow-hidden shadow-lg border border-slate-200">
               <iframe src={getYouTubeEmbedUrl(lesson.content)} className="w-full h-full" allowFullScreen />
             </div>
           )}
 
-          {/* Simulasi PhET */}
           {lesson.content_type === 'simulation_embed' && (
             <iframe src={lesson.content} className="w-full h-[500px] md:h-[600px] rounded-2xl border border-slate-200 shadow-sm" allowFullScreen />
           )}
 
-          {/* Aplikasi Web / Canva */}
           {lesson.content_type === 'web_embed' && (
             <div>
               <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-4 flex flex-col sm:flex-row items-center justify-between gap-3">
-                <p className="text-sm text-amber-800 font-medium">
-                  Jika materi tidak muncul di bawah, buka langsung di tab baru.
-                </p>
-                <a href={lesson.content} target="_blank" rel="noopener noreferrer" className="bg-amber-600 text-white px-4 py-2 rounded-lg hover:bg-amber-700 text-sm font-bold transition whitespace-nowrap">
-                  ↗ Buka Tab Baru
-                </a>
+                <p className="text-sm text-amber-800 font-medium">Jika materi tidak muncul di bawah, buka langsung di tab baru.</p>
+                <a href={lesson.content} target="_blank" rel="noopener noreferrer" className="bg-amber-600 text-white px-4 py-2 rounded-lg hover:bg-amber-700 text-sm font-bold transition whitespace-nowrap">↗ Buka Tab Baru</a>
               </div>
               <iframe src={lesson.content} className="w-full h-[500px] md:h-[600px] rounded-2xl border border-slate-200 shadow-sm" allowFullScreen allow="camera; microphone; fullscreen; clipboard-read; clipboard-write" />
             </div>
           )}
 
-          {/* Tautan Eksternal */}
           {lesson.content_type === 'external_link' && (
             <div className="bg-blue-50 border border-blue-100 rounded-3xl p-12 text-center">
               <div className="text-6xl mb-4">🔗</div>
               <p className="text-slate-600 mb-8 text-lg">Materi ini tersedia di tautan eksternal. Klik tombol di bawah untuk membukanya.</p>
-              <a href={lesson.content} target="_blank" rel="noopener noreferrer" className="inline-block bg-blue-600 text-white px-8 py-4 rounded-xl hover:bg-blue-700 font-bold transition shadow-lg shadow-blue-600/30">
-                Buka Materi Pelajaran
-              </a>
+              <a href={lesson.content} target="_blank" rel="noopener noreferrer" className="inline-block bg-blue-600 text-white px-8 py-4 rounded-xl hover:bg-blue-700 font-bold transition shadow-lg shadow-blue-600/30">Buka Materi Pelajaran</a>
             </div>
           )}
 
-          {/* Kuis */}
           {lesson.content_type === 'quiz' && (
             <div>
               {quizQuestions.length > 0 ? (
@@ -176,7 +153,8 @@ export default async function StudentLessonPage({
                   lessonId={lessonId} 
                   questions={quizQuestions} 
                   userId={user.id} 
-                  courseId={courseId} // <-- PROP INI SUDAH DITAMBAHKAN
+                  courseId={courseId} 
+                  previousResult={previousResult} // Kirim nilai sebelumnya ke komponen
                 />
               ) : (
                 <div className="text-center p-12 bg-slate-50 rounded-2xl border border-slate-200">
@@ -187,7 +165,6 @@ export default async function StudentLessonPage({
           )}
         </div>
 
-        {/* Tombol Aksi (Selesai) - Sembunyikan jika tipe kuis karena kuis otomatis selesai */}
         {lesson.content_type !== 'quiz' && (
           <div className="flex justify-center border-t border-slate-200 pt-8 mt-4">
             {isCompleted ? (
