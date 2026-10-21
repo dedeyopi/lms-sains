@@ -19,7 +19,7 @@ export default async function TeacherDashboardPage() {
     .eq('teacher_id', user.id)
     .order('created_at', { ascending: false })
 
-  // Hitung statistik sederhana (Total Kelas & Total Kuis)
+  // Hitung statistik
   const totalClasses = courses?.length || 0
   let totalStudents = 0
   if (courses && courses.length > 0) {
@@ -31,19 +31,23 @@ export default async function TeacherDashboardPage() {
     totalStudents = count || 0
   }
 
-  // Fungsi untuk memberikan warna dan ikon berdasarkan mata pelajaran
+  // Fungsi untuk memberikan warna, gradien, dan ikon besar berdasarkan mata pelajaran
   const getSubjectStyle = (subject: string) => {
     switch (subject.toLowerCase()) {
-      case 'physics': return { bg: 'bg-blue-50', text: 'text-blue-700', border: 'border-blue-200', icon: '⚛️', gradient: 'from-blue-500 to-cyan-400' }
-      case 'chemistry': return { bg: 'bg-purple-50', text: 'text-purple-700', border: 'border-purple-200', icon: '🧪', gradient: 'from-purple-500 to-fuchsia-400' }
-      case 'biology': return { bg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-200', icon: '🌿', gradient: 'from-emerald-500 to-teal-400' }
-      default: return { bg: 'bg-slate-50', text: 'text-slate-700', border: 'border-slate-200', icon: '🔬', gradient: 'from-slate-600 to-slate-400' }
+      case 'physics': 
+        return { gradient: 'from-blue-600 to-cyan-400', icon: '⚛️', textColor: 'text-blue-700', badgeBg: 'bg-blue-100 text-blue-800' }
+      case 'chemistry': 
+        return { gradient: 'from-purple-600 to-fuchsia-400', icon: '🧪', textColor: 'text-purple-700', badgeBg: 'bg-purple-100 text-purple-800' }
+      case 'biology': 
+        return { gradient: 'from-emerald-600 to-teal-400', icon: '🌿', textColor: 'text-emerald-700', badgeBg: 'bg-emerald-100 text-emerald-800' }
+      default: 
+        return { gradient: 'from-slate-700 to-slate-500', icon: '🔬', textColor: 'text-slate-700', badgeBg: 'bg-slate-100 text-slate-800' }
     }
   }
 
   return (
     <div className="min-h-screen bg-slate-50 pb-20">
-      {/* Navbar Kaca (Glassmorphism) */}
+      {/* Navbar Kaca */}
       <nav className="bg-white/80 backdrop-blur-md border-b border-slate-200 sticky top-0 z-50">
         <div className="max-w-6xl mx-auto px-6 py-4 flex justify-between items-center">
           <Link href="/dashboard" className="flex items-center gap-2 text-slate-500 hover:text-blue-600 transition font-medium text-sm">
@@ -73,7 +77,7 @@ export default async function TeacherDashboardPage() {
         </div>
 
         {/* Kartu Statistik */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
           <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-4">
             <div className="w-14 h-14 bg-blue-50 rounded-xl flex items-center justify-center text-2xl">🏫</div>
             <div>
@@ -100,59 +104,73 @@ export default async function TeacherDashboardPage() {
         </div>
 
         {/* Daftar Kelas */}
-        <h2 className="text-xl font-bold text-slate-800 mb-6 flex items-center gap-2">
+        <h2 className="text-2xl font-bold text-slate-800 mb-6 flex items-center gap-2">
           Kelas yang Anda Ampu
         </h2>
 
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
           {courses?.map((course: any) => {
             const style = getSubjectStyle(course.subject)
             return (
               <Link key={course.id} href={`/dashboard/teacher/courses/${course.id}`}
-                className="group relative bg-white rounded-2xl shadow-sm border border-slate-200 hover:shadow-xl hover:border-blue-300 transition-all duration-300 flex flex-col overflow-hidden">
+                className="group relative bg-white rounded-3xl shadow-sm border border-slate-200 hover:shadow-2xl hover:border-teal-400 transition-all duration-300 overflow-hidden flex flex-col">
                 
-                {/* Garis Atas Berwarna */}
-                <div className={`h-2 w-full bg-gradient-to-r ${style.gradient}`}></div>
-                
-                <div className="p-6 flex-1 flex flex-col">
-                  <div className="flex justify-between items-start mb-4">
-                    <span className={`text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wide border ${style.bg} ${style.text} ${style.border} flex items-center gap-1`}>
-                      <span>{style.icon}</span> {course.subject}
-                    </span>
-                    <div className="bg-slate-100 text-slate-700 px-2.5 py-1 rounded-md text-xs font-mono font-bold border border-slate-200" title="Kode Kelas">
-                      {course.enrollment_code}
-                    </div>
+                {/* Thumbnail / Banner Atas dengan Ikon Besar */}
+                <div className={`h-32 bg-gradient-to-br ${style.gradient} relative overflow-hidden p-6 flex items-start justify-between`}>
+                  {/* Ornamen Latar */}
+                  <div className="absolute -right-6 -top-6 w-32 h-32 bg-white/20 rounded-full blur-2xl"></div>
+                  <div className="absolute -left-6 -bottom-6 w-24 h-24 bg-black/10 rounded-full blur-xl"></div>
+                  
+                  {/* Ikon Mapel Besar */}
+                  <div className="text-6xl drop-shadow-lg transform group-hover:scale-110 group-hover:rotate-6 transition-transform duration-300 z-10">
+                    {style.icon}
                   </div>
                   
-                  <h3 className="text-xl font-bold text-slate-800 mb-2 group-hover:text-blue-700 transition line-clamp-2">{course.title}</h3>
-                  <p className="text-slate-500 text-sm line-clamp-3 mb-6 flex-1">{course.description}</p>
+                  {/* Kode Kelas */}
+                  <div className="bg-black/20 backdrop-blur-md text-white px-3 py-1.5 rounded-lg text-sm font-mono font-bold border border-white/20 z-10" title="Kode Kelas">
+                    {course.enrollment_code}
+                  </div>
+                </div>
+                
+                {/* Konten Kartu */}
+                <div className="p-6 flex-1 flex flex-col">
+                  <div className="mb-3">
+                    <span className={`text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider ${style.badgeBg}`}>
+                      {course.subject}
+                    </span>
+                  </div>
                   
-                  <div className="pt-4 border-t border-slate-100 flex justify-between items-center text-sm font-bold text-blue-600">
-                    <span>Masuk ke Kelas</span>
-                    <span className="bg-blue-50 p-1.5 rounded-md group-hover:bg-blue-600 group-hover:text-white transition-colors">&rarr;</span>
+                  {/* Font Judul Diperbesar */}
+                  <h3 className="text-2xl font-black text-slate-800 mb-3 group-hover:text-teal-700 transition leading-tight line-clamp-2">
+                    {course.title}
+                  </h3>
+                  
+                  <p className="text-slate-500 text-sm line-clamp-3 mb-6 flex-1 leading-relaxed">
+                    {course.description}
+                  </p>
+                  
+                  {/* Footer Kartu */}
+                  <div className="pt-4 border-t border-slate-100 flex justify-between items-center mt-auto">
+                    <span className="text-sm font-bold text-slate-700 group-hover:text-teal-700 transition">Masuk ke Kelas</span>
+                    <div className="bg-slate-50 text-slate-500 p-2 rounded-xl group-hover:bg-teal-600 group-hover:text-white transition-colors duration-300">
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
+                    </div>
                   </div>
                 </div>
               </Link>
             )
           })}
 
-          {/* Kartu Kosong / Tambah Baru (Jika diinginkan) */}
+          {/* Kartu Tambah Kelas Baru */}
           <Link href="/dashboard/teacher/courses/new" 
-            className="group border-2 border-dashed border-slate-300 rounded-2xl p-6 flex flex-col items-center justify-center text-center hover:border-blue-400 hover:bg-blue-50/50 transition cursor-pointer min-h-[250px]">
-            <div className="w-16 h-16 bg-slate-100 text-slate-400 group-hover:bg-blue-100 group-hover:text-blue-500 rounded-full flex items-center justify-center text-3xl mb-4 transition">
+            className="group border-2 border-dashed border-slate-300 rounded-3xl p-8 flex flex-col items-center justify-center text-center hover:border-blue-500 hover:bg-blue-50/50 transition cursor-pointer min-h-[350px]">
+            <div className="w-20 h-20 bg-slate-100 text-slate-400 group-hover:bg-blue-100 group-hover:text-blue-600 rounded-full flex items-center justify-center text-4xl mb-6 transition shadow-inner">
               +
             </div>
-            <h3 className="font-bold text-slate-700 group-hover:text-blue-700">Buat Kelas Baru</h3>
-            <p className="text-sm text-slate-500 mt-1 max-w-[200px]">Tambahkan mata pelajaran baru untuk siswa Anda.</p>
+            <h3 className="text-xl font-bold text-slate-700 group-hover:text-blue-700 mb-2">Buat Kelas Baru</h3>
+            <p className="text-sm text-slate-500 max-w-[200px]">Tambahkan mata pelajaran baru untuk siswa Anda.</p>
           </Link>
         </div>
-        
-        {(!courses || courses.length === 0) && (
-           <div className="text-center mt-10 text-slate-400 text-sm">
-             *Anda belum memiliki kelas. Klik tombol di atas untuk memulai.
-           </div>
-        )}
-
       </main>
     </div>
   )

@@ -41,7 +41,7 @@ export default function LoginPage() {
         </div>
         <div className="relative z-10">
           <h1 className="text-4xl font-bold text-white mb-6 leading-tight">
-            Selamat datang kembali di <br/> Laboratorium Digitalmu.
+            Selamat datang kembali di <br/> Ruang Kelas Sains Digitalmu.
           </h1>
           <p className="text-blue-100 text-lg">
             Lanjutkan eksplorasimu, kerjakan kuis, dan raih progres belajarmu hari ini.
