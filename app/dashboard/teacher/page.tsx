@@ -9,8 +9,21 @@ export default async function TeacherDashboardPage() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/auth/login')
 
-  const { data: profile } = await supabase.from('profiles').select('role, full_name').eq('id', user.id).single()
-  if (profile?.role !== 'teacher') redirect('/dashboard')
+  // Gunakan maybeSingle() agar tidak crash jika profil belum ada
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('role, full_name')
+    .eq('id', user.id)
+    .maybeSingle()
+
+  // Cek Role dari database ATAU dari metadata auth
+  const userRole = profile?.role || user.user_metadata?.role
+  const userName = profile?.full_name || user.user_metadata?.full_name || 'Guru'
+
+  // Jika benar-benar bukan guru, tendang ke dasbor siswa
+  if (userRole !== 'teacher') {
+    redirect('/dashboard')
+  }
 
   // Ambil data kursus
   const { data: courses } = await supabase
@@ -31,23 +44,17 @@ export default async function TeacherDashboardPage() {
     totalStudents = count || 0
   }
 
-  // Fungsi untuk memberikan warna, gradien, dan ikon besar berdasarkan mata pelajaran
   const getSubjectStyle = (subject: string) => {
     switch (subject.toLowerCase()) {
-      case 'physics': 
-        return { gradient: 'from-blue-600 to-cyan-400', icon: '⚛️', textColor: 'text-blue-700', badgeBg: 'bg-blue-100 text-blue-800' }
-      case 'chemistry': 
-        return { gradient: 'from-purple-600 to-fuchsia-400', icon: '🧪', textColor: 'text-purple-700', badgeBg: 'bg-purple-100 text-purple-800' }
-      case 'biology': 
-        return { gradient: 'from-emerald-600 to-teal-400', icon: '🌿', textColor: 'text-emerald-700', badgeBg: 'bg-emerald-100 text-emerald-800' }
-      default: 
-        return { gradient: 'from-slate-700 to-slate-500', icon: '🔬', textColor: 'text-slate-700', badgeBg: 'bg-slate-100 text-slate-800' }
+      case 'physics': return { gradient: 'from-blue-600 to-cyan-400', icon: '⚛️', textColor: 'text-blue-700', badgeBg: 'bg-blue-100 text-blue-800' }
+      case 'chemistry': return { gradient: 'from-purple-600 to-fuchsia-400', icon: '🧪', textColor: 'text-purple-700', badgeBg: 'bg-purple-100 text-purple-800' }
+      case 'biology': return { gradient: 'from-emerald-600 to-teal-400', icon: '🌿', textColor: 'text-emerald-700', badgeBg: 'bg-emerald-100 text-emerald-800' }
+      default: return { gradient: 'from-slate-700 to-slate-500', icon: '🔬', textColor: 'text-slate-700', badgeBg: 'bg-slate-100 text-slate-800' }
     }
   }
 
   return (
     <div className="min-h-screen bg-slate-50 pb-20">
-      {/* Navbar Kaca */}
       <nav className="bg-white/80 backdrop-blur-md border-b border-slate-200 sticky top-0 z-50">
         <div className="max-w-6xl mx-auto px-6 py-4 flex justify-between items-center">
           <Link href="/dashboard" className="flex items-center gap-2 text-slate-500 hover:text-blue-600 transition font-medium text-sm">
@@ -56,19 +63,17 @@ export default async function TeacherDashboardPage() {
           <div className="flex items-center gap-3">
             <span className="text-xs font-bold text-teal-700 bg-teal-100 px-3 py-1.5 rounded-lg border border-teal-200 shadow-sm">Mode Guru</span>
             <div className="w-8 h-8 bg-slate-800 text-white rounded-full flex items-center justify-center font-bold text-sm shadow-md">
-              {profile?.full_name?.charAt(0).toUpperCase()}
+              {userName.charAt(0).toUpperCase()}
             </div>
           </div>
         </div>
       </nav>
 
       <main className="max-w-6xl mx-auto px-6 py-10">
-        
-        {/* Header & Aksi */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-8 gap-4">
           <div>
             <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight mb-2">Command Center 👨‍🏫</h1>
-            <p className="text-slate-500">Selamat datang kembali, <span className="font-semibold text-slate-700">{profile?.full_name}</span>. Kelola kelas dan pantau siswa Anda di sini.</p>
+            <p className="text-slate-500">Selamat datang kembali, <span className="font-semibold text-slate-700">{userName}</span>. Kelola kelas dan pantau siswa Anda di sini.</p>
           </div>
           <Link href="/dashboard/teacher/courses/new" 
             className="bg-blue-600 text-white px-6 py-3 rounded-xl font-bold hover:bg-blue-700 transition shadow-lg shadow-blue-600/30 flex items-center gap-2 transform hover:-translate-y-0.5">
@@ -76,7 +81,6 @@ export default async function TeacherDashboardPage() {
           </Link>
         </div>
 
-        {/* Kartu Statistik */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
           <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-4">
             <div className="w-14 h-14 bg-blue-50 rounded-xl flex items-center justify-center text-2xl">🏫</div>
@@ -103,7 +107,6 @@ export default async function TeacherDashboardPage() {
           </div>
         </div>
 
-        {/* Daftar Kelas */}
         <h2 className="text-2xl font-bold text-slate-800 mb-6 flex items-center gap-2">
           Kelas yang Anda Ampu
         </h2>
@@ -115,24 +118,19 @@ export default async function TeacherDashboardPage() {
               <Link key={course.id} href={`/dashboard/teacher/courses/${course.id}`}
                 className="group relative bg-white rounded-3xl shadow-sm border border-slate-200 hover:shadow-2xl hover:border-teal-400 transition-all duration-300 overflow-hidden flex flex-col">
                 
-                {/* Thumbnail / Banner Atas dengan Ikon Besar */}
                 <div className={`h-32 bg-gradient-to-br ${style.gradient} relative overflow-hidden p-6 flex items-start justify-between`}>
-                  {/* Ornamen Latar */}
                   <div className="absolute -right-6 -top-6 w-32 h-32 bg-white/20 rounded-full blur-2xl"></div>
                   <div className="absolute -left-6 -bottom-6 w-24 h-24 bg-black/10 rounded-full blur-xl"></div>
                   
-                  {/* Ikon Mapel Besar */}
                   <div className="text-6xl drop-shadow-lg transform group-hover:scale-110 group-hover:rotate-6 transition-transform duration-300 z-10">
                     {style.icon}
                   </div>
                   
-                  {/* Kode Kelas */}
                   <div className="bg-black/20 backdrop-blur-md text-white px-3 py-1.5 rounded-lg text-sm font-mono font-bold border border-white/20 z-10" title="Kode Kelas">
                     {course.enrollment_code}
                   </div>
                 </div>
                 
-                {/* Konten Kartu */}
                 <div className="p-6 flex-1 flex flex-col">
                   <div className="mb-3">
                     <span className={`text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider ${style.badgeBg}`}>
@@ -140,7 +138,6 @@ export default async function TeacherDashboardPage() {
                     </span>
                   </div>
                   
-                  {/* Font Judul Diperbesar */}
                   <h3 className="text-2xl font-black text-slate-800 mb-3 group-hover:text-teal-700 transition leading-tight line-clamp-2">
                     {course.title}
                   </h3>
@@ -149,7 +146,6 @@ export default async function TeacherDashboardPage() {
                     {course.description}
                   </p>
                   
-                  {/* Footer Kartu */}
                   <div className="pt-4 border-t border-slate-100 flex justify-between items-center mt-auto">
                     <span className="text-sm font-bold text-slate-700 group-hover:text-teal-700 transition">Masuk ke Kelas</span>
                     <div className="bg-slate-50 text-slate-500 p-2 rounded-xl group-hover:bg-teal-600 group-hover:text-white transition-colors duration-300">
@@ -161,7 +157,6 @@ export default async function TeacherDashboardPage() {
             )
           })}
 
-          {/* Kartu Tambah Kelas Baru */}
           <Link href="/dashboard/teacher/courses/new" 
             className="group border-2 border-dashed border-slate-300 rounded-3xl p-8 flex flex-col items-center justify-center text-center hover:border-blue-500 hover:bg-blue-50/50 transition cursor-pointer min-h-[350px]">
             <div className="w-20 h-20 bg-slate-100 text-slate-400 group-hover:bg-blue-100 group-hover:text-blue-600 rounded-full flex items-center justify-center text-4xl mb-6 transition shadow-inner">
