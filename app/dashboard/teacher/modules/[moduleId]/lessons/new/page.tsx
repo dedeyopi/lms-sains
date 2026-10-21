@@ -14,6 +14,7 @@ export default function NewLessonPage({
   const [contentType, setContentType] = useState('text')
   const [content, setContent] = useState('')
   const [orderIndex, setOrderIndex] = useState(1)
+  const [estimatedMinutes, setEstimatedMinutes] = useState(10) // <-- State Baru
   const [loading, setLoading] = useState(false)
   const router = useRouter()
   const supabase = createClient()
@@ -28,6 +29,7 @@ export default function NewLessonPage({
       content_type: contentType,
       content,
       order_index: orderIndex,
+      estimated_minutes: estimatedMinutes, // <-- Simpan ke database
     })
 
     if (error) {
@@ -63,19 +65,30 @@ export default function NewLessonPage({
               />
             </div>
 
-            <div>
-              <label className="block text-sm font-bold text-slate-700 mb-2">Tipe Konten</label>
-              <select
-                value={contentType} onChange={(e) => setContentType(e.target.value)}
-                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition font-medium"
-              >
-                <option value="text">📝 Teks Bacaan</option>
-                <option value="video_link">🎥 Video YouTube</option>
-                <option value="simulation_embed">🔬 Simulasi PhET</option>
-                <option value="web_embed">📱 Aplikasi Web / Canva</option>
-                <option value="external_link">🔗 Tautan Eksternal</option>
-                <option value="quiz">❓ Kuis</option>
-              </select>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <label className="block text-sm font-bold text-slate-700 mb-2">Tipe Konten</label>
+                <select
+                  value={contentType} onChange={(e) => setContentType(e.target.value)}
+                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition font-medium"
+                >
+                  <option value="text">📝 Teks Bacaan</option>
+                  <option value="video_link">🎥 Video YouTube</option>
+                  <option value="simulation_embed">🔬 Simulasi PhET</option>
+                  <option value="web_embed">📱 Aplikasi Web / Canva</option>
+                  <option value="external_link">🔗 Tautan Eksternal</option>
+                  <option value="quiz">❓ Kuis</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-bold text-slate-700 mb-2">Estimasi Waktu (Menit)</label>
+                <input
+                  type="number" required min={1}
+                  value={estimatedMinutes} onChange={(e) => setEstimatedMinutes(parseInt(e.target.value))}
+                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition font-medium"
+                />
+              </div>
             </div>
 
             <div>
