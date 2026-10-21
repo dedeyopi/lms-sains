@@ -2,6 +2,7 @@
 import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 
 export default function NewCoursePage() {
   const [title, setTitle] = useState('')
@@ -18,68 +19,75 @@ export default function NewCoursePage() {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
 
-    // Buat kode acak 6 karakter untuk enrollment
     const generatedCode = Math.random().toString(36).substring(2, 8).toUpperCase()
 
     const { error } = await supabase.from('courses').insert({
-      title,
-      description,
-      subject,
-      teacher_id: user.id,
-      enrollment_code: generatedCode,
+      title, description, subject, teacher_id: user.id, enrollment_code: generatedCode,
     })
 
     if (error) {
       alert('Gagal membuat kursus: ' + error.message)
+      setLoading(false)
     } else {
-      alert('Kursus berhasil dibuat!')
       router.push('/dashboard/teacher')
     }
-    setLoading(false)
   }
 
   return (
-    <div className="max-w-2xl mx-auto p-6">
-      <h1 className="text-3xl font-bold mb-6">Buat Kursus Baru</h1>
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <div>
-          <label className="block mb-1 font-medium">Judul Kursus</label>
-          <input
-            type="text" value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            className="w-full p-2 border rounded" required
-            placeholder="Contoh: Fisika Dasar - Gerak Newton"
-          />
+    <div className="min-h-screen bg-slate-50 py-12 px-6">
+      <div className="max-w-2xl mx-auto">
+        <Link href="/dashboard/teacher" className="text-slate-500 hover:text-blue-600 text-sm font-medium flex items-center gap-2 mb-6 transition">
+          &larr; Batal dan Kembali
+        </Link>
+
+        <div className="bg-white rounded-3xl shadow-xl border border-slate-100 p-8 md:p-10">
+          <div className="text-center mb-8">
+            <div className="text-4xl mb-3">🏫</div>
+            <h1 className="text-2xl font-bold text-slate-800">Buat Kelas Baru</h1>
+            <p className="text-slate-500 mt-2">Isi detail kelas yang akan Anda ampu.</p>
+          </div>
+
+          <form onSubmit={handleSubmit} className="space-y-6">
+            <div>
+              <label className="block text-sm font-bold text-slate-700 mb-2">Judul Kelas</label>
+              <input
+                type="text" value={title} onChange={(e) => setTitle(e.target.value)}
+                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition font-medium"
+                required placeholder="Contoh: Biologi Dasar Kelas 10"
+              />
+            </div>
+            
+            <div>
+              <label className="block text-sm font-bold text-slate-700 mb-2">Deskripsi Singkat</label>
+              <textarea
+                value={description} onChange={(e) => setDescription(e.target.value)}
+                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition"
+                rows={4} placeholder="Jelaskan secara singkat apa yang akan dipelajari siswa..."
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-bold text-slate-700 mb-2">Mata Pelajaran</label>
+              <select
+                value={subject} onChange={(e) => setSubject(e.target.value)}
+                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition font-medium"
+              >
+                <option value="physics">⚛️ Fisika</option>
+                <option value="chemistry">🧪 Kimia</option>
+                <option value="biology">🌿 Biologi</option>
+                <option value="general">🔬 Umum / Lainnya</option>
+              </select>
+            </div>
+
+            <button
+              type="submit" disabled={loading}
+              className="w-full bg-blue-600 text-white py-4 rounded-xl font-bold text-lg hover:bg-blue-700 transition shadow-lg shadow-blue-600/30 disabled:bg-slate-400 mt-4"
+            >
+              {loading ? 'Menyimpan...' : 'Buat Kelas'}
+            </button>
+          </form>
         </div>
-        <div>
-          <label className="block mb-1 font-medium">Deskripsi</label>
-          <textarea
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            className="w-full p-2 border rounded" rows={3}
-            placeholder="Deskripsi singkat tentang kursus ini..."
-          />
-        </div>
-        <div>
-          <label className="block mb-1 font-medium">Mata Pelajaran</label>
-          <select
-            value={subject}
-            onChange={(e) => setSubject(e.target.value)}
-            className="w-full p-2 border rounded"
-          >
-            <option value="physics">Fisika</option>
-            <option value="chemistry">Kimia</option>
-            <option value="biology">Biologi</option>
-            <option value="general">Umum</option>
-          </select>
-        </div>
-        <button
-          type="submit" disabled={loading}
-          className="w-full bg-blue-600 text-white p-2 rounded hover:bg-blue-700 disabled:bg-gray-400"
-        >
-          {loading ? 'Menyimpan...' : 'Buat Kursus'}
-        </button>
-      </form>
+      </div>
     </div>
   )
 }
