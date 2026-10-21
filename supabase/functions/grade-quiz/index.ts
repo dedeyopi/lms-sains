@@ -62,6 +62,8 @@ Deno.serve(async (req) => {
       })
     }
 
+    
+
     // 6. Kembalikan hasil dengan header CORS yang benar
     return new Response(JSON.stringify({ 
       success: true, 
