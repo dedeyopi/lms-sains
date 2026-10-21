@@ -6,11 +6,23 @@ import QuizPlayer from '@/app/components/QuizPlayer'
 
 export const dynamic = 'force-dynamic'
 
+// --- FUNGSI BANTUAN UNTUK MEMPERBAIKI URL ---
 function getYouTubeEmbedUrl(url: string): string {
   const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/
   const match = url.match(regExp)
   return match && match[2].length === 11 ? `https://www.youtube.com/embed/${match[2]}` : url
 }
+
+function fixEmbedUrl(url: string, type: string) {
+  if (type === 'web_embed' && url.includes('canva.com')) {
+    // Jika URL Canva belum ada ?embed, tambahkan secara otomatis
+    if (!url.includes('?embed')) {
+      return url.split('?')[0] + '?embed'
+    }
+  }
+  return url
+}
+// ---------------------------------------------
 
 async function markAsCompleted(formData: FormData) {
   'use server'
@@ -69,36 +81,30 @@ export default async function StudentLessonPage({
       .eq('lesson_id', lessonId)
     if (questions) quizQuestions = questions
 
-    // Cek apakah siswa sudah pernah mengerjakan kuis ini
     if (quizQuestions.length > 0) {
       const questionIds = quizQuestions.map(q => q.id)
-      
       const { data: responses } = await supabase
         .from('quiz_responses')
-        .select(`
-          is_correct,
-          quiz_questions ( points )
-        `)
+        .select(`is_correct, quiz_questions ( points )`)
         .eq('student_id', user.id)
         .in('question_id', questionIds)
 
-      // Jika ada respons, hitung total skornya
       if (responses && responses.length > 0) {
-        // Pastikan kita mengambil poin dengan benar, baik itu object atau array
         const totalScore = responses.filter(r => r.is_correct).reduce((sum, r) => {
           const points = Array.isArray(r.quiz_questions) ? (r.quiz_questions[0] as any)?.points : (r.quiz_questions as any)?.points;
           return sum + (points || 0);
         }, 0)
-        
         const maxScore = responses.reduce((sum, r) => {
           const points = Array.isArray(r.quiz_questions) ? (r.quiz_questions[0] as any)?.points : (r.quiz_questions as any)?.points;
           return sum + (points || 0);
         }, 0)
-        
         previousResult = { totalScore, maxScore }
       }
     }
   }
+
+  // Tentukan URL Embed yang sudah diperbaiki
+  const finalEmbedUrl = fixEmbedUrl(lesson.content, lesson.content_type)
 
   return (
     <div className="min-h-screen bg-slate-50 pb-20">
@@ -138,16 +144,42 @@ export default async function StudentLessonPage({
           )}
 
           {lesson.content_type === 'simulation_embed' && (
-            <iframe src={lesson.content} className="w-full h-[500px] md:h-[600px] rounded-2xl border border-slate-200 shadow-sm" allowFullScreen />
+            <iframe src={finalEmbedUrl} className="w-full h-[500px] md:h-[600px] rounded-2xl border border-slate-200 shadow-sm" allowFullScreen />
           )}
 
+          {/* Tampilan Web Embed yang Lebih Elegan */}
           {lesson.content_type === 'web_embed' && (
-            <div>
-              <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-4 flex flex-col sm:flex-row items-center justify-between gap-3">
-                <p className="text-sm text-amber-800 font-medium">Jika materi tidak muncul di bawah, buka langsung di tab baru.</p>
-                <a href={lesson.content} target="_blank" rel="noopener noreferrer" className="bg-amber-600 text-white px-4 py-2 rounded-lg hover:bg-amber-700 text-sm font-bold transition whitespace-nowrap">↗ Buka Tab Baru</a>
+            <div className="flex flex-col gap-4">
+              {/* Header Bar Elegan */}
+              <div className="flex items-center justify-between bg-slate-50 border border-slate-200 rounded-xl px-5 py-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center text-blue-600">
+                    🌐
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-slate-800 text-sm">Materi Eksternal</h4>
+                    <p className="text-xs text-slate-500">Jika materi di bawah tidak muncul, buka di tab baru.</p>
+                  </div>
+                </div>
+                <a 
+                  href={finalEmbedUrl} 
+                  target="_blank" 
+                  rel="noopener noreferrer" 
+                  className="bg-white border border-slate-300 text-slate-700 px-4 py-2 rounded-lg hover:bg-slate-100 text-sm font-bold transition shadow-sm whitespace-nowrap"
+                >
+                  Buka Tab Baru ↗
+                </a>
               </div>
-              <iframe src={lesson.content} className="w-full h-[500px] md:h-[600px] rounded-2xl border border-slate-200 shadow-sm" allowFullScreen allow="camera; microphone; fullscreen; clipboard-read; clipboard-write" />
+
+              {/* Iframe Area */}
+              <div className="rounded-2xl border border-slate-200 overflow-hidden shadow-inner bg-slate-100">
+                <iframe 
+                  src={finalEmbedUrl} 
+                  className="w-full h-[500px] md:h-[600px] border-0" 
+                  allowFullScreen 
+                  allow="camera; microphone; fullscreen; clipboard-read; clipboard-write" 
+                />
+              </div>
             </div>
           )}
 
@@ -163,11 +195,7 @@ export default async function StudentLessonPage({
             <div>
               {quizQuestions.length > 0 ? (
                 <QuizPlayer 
-                  lessonId={lessonId} 
-                  questions={quizQuestions} 
-                  userId={user.id} 
-                  courseId={courseId} 
-                  previousResult={previousResult} 
+                  lessonId={lessonId} questions={quizQuestions} userId={user.id} courseId={courseId} previousResult={previousResult} 
                 />
               ) : (
                 <div className="text-center p-12 bg-slate-50 rounded-2xl border border-slate-200">
