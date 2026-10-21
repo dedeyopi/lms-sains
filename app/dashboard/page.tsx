@@ -15,13 +15,29 @@ async function logout() {
 export default async function DashboardPage() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
+  
   if (!user) redirect('/auth/login')
 
-  const { data: profile } = await supabase.from('profiles').select('full_name, role').eq('id', user.id).single()
+  // Ambil profil, tapi jangan crash jika tidak ada (.maybeSingle bukan .single)
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('full_name, role')
+    .eq('id', user.id)
+    .maybeSingle()
 
+  // Fallback: Jika profil kosong, ambil nama dari metadata auth (saat register)
+  const displayName = profile?.full_name || user.user_metadata?.full_name || 'Siswa'
+  const userRole = profile?.role || user.user_metadata?.role || 'student' // Default ke student
+
+  // Ambil kursus yang diikuti
   const { data: enrollments } = await supabase
     .from('enrollments')
-    .select(`course_id, courses (id, title, description, subject)`)
+    .select(`
+      course_id,
+      courses (
+        id, title, description, subject
+      )
+    `)
     .eq('student_id', user.id)
 
   const myCourses = enrollments?.map((e: any) => e.courses).filter(Boolean) || []
@@ -36,16 +52,16 @@ export default async function DashboardPage() {
             <span className="text-xl font-bold text-slate-800 tracking-tight">SciSphere</span>
           </Link>
           <div className="flex items-center gap-4">
-            {profile?.role === 'teacher' && (
+            {userRole === 'teacher' && (
               <Link href="/dashboard/teacher" className="bg-blue-50 text-blue-700 px-4 py-2 rounded-xl text-sm font-semibold hover:bg-blue-100 transition">
                 Mode Guru
               </Link>
             )}
             <div className="flex items-center gap-2 bg-slate-50 px-3 py-1.5 rounded-full border border-slate-200">
               <div className="w-6 h-6 bg-blue-600 rounded-full flex items-center justify-center text-xs text-white font-bold">
-                {profile?.full_name?.charAt(0).toUpperCase()}
+                {displayName.charAt(0).toUpperCase()}
               </div>
-              <span className="text-sm font-medium text-slate-700 hidden sm:block">{profile?.full_name}</span>
+              <span className="text-sm font-medium text-slate-700 hidden sm:block">{displayName}</span>
             </div>
             <form action={logout}>
               <button type="submit" className="text-sm font-medium text-red-600 hover:text-red-700 bg-red-50 px-3 py-1.5 rounded-lg transition">
@@ -61,11 +77,13 @@ export default async function DashboardPage() {
         <div className="bg-gradient-to-r from-blue-600 to-teal-500 rounded-3xl p-8 md:p-12 mb-10 text-white shadow-xl relative overflow-hidden flex flex-col md:flex-row items-center justify-between gap-8">
           <div className="absolute inset-0 bg-[linear-gradient(to_right,#ffffff12_1px,transparent_1px),linear-gradient(to_bottom,#ffffff12_1px,transparent_1px)] bg-[size:24px_24px]"></div>
           <div className="relative z-10 flex-1">
-            <h1 className="text-3xl md:text-4xl font-bold mb-3">Halo, {profile?.full_name?.split(' ')[0]}! 👋</h1>
+            <h1 className="text-3xl md:text-4xl font-bold mb-3">Halo, {displayName.split(' ')[0]}! 👋</h1>
             <p className="text-blue-100 text-lg">Siap untuk menjelajahi hal baru hari ini? Masukkan kode kelas dari gurumu untuk memulai.</p>
           </div>
+          
+          {/* Form Join SELALU ditampilkan jika bukan Guru (atau jika role tidak diketahui) */}
           <div className="relative z-10 w-full md:w-96">
-            {profile?.role === 'student' && <JoinCourseForm userId={user.id} />}
+            {userRole !== 'teacher' && <JoinCourseForm userId={user.id} />}
           </div>
         </div>
 
