@@ -72,16 +72,29 @@ export default async function StudentLessonPage({
     // Cek apakah siswa sudah pernah mengerjakan kuis ini
     if (quizQuestions.length > 0) {
       const questionIds = quizQuestions.map(q => q.id)
+      
       const { data: responses } = await supabase
         .from('quiz_responses')
-        .select('is_correct, quiz_questions!inner(points)')
+        .select(`
+          is_correct,
+          quiz_questions ( points )
+        `)
         .eq('student_id', user.id)
         .in('question_id', questionIds)
 
       // Jika ada respons, hitung total skornya
       if (responses && responses.length > 0) {
-        const totalScore = responses.filter(r => r.is_correct).reduce((sum, r) => sum + (r.quiz_questions as any).points, 0)
-        const maxScore = responses.reduce((sum, r) => sum + (r.quiz_questions as any).points, 0)
+        // Pastikan kita mengambil poin dengan benar, baik itu object atau array
+        const totalScore = responses.filter(r => r.is_correct).reduce((sum, r) => {
+          const points = Array.isArray(r.quiz_questions) ? (r.quiz_questions[0] as any)?.points : (r.quiz_questions as any)?.points;
+          return sum + (points || 0);
+        }, 0)
+        
+        const maxScore = responses.reduce((sum, r) => {
+          const points = Array.isArray(r.quiz_questions) ? (r.quiz_questions[0] as any)?.points : (r.quiz_questions as any)?.points;
+          return sum + (points || 0);
+        }, 0)
+        
         previousResult = { totalScore, maxScore }
       }
     }
@@ -154,7 +167,7 @@ export default async function StudentLessonPage({
                   questions={quizQuestions} 
                   userId={user.id} 
                   courseId={courseId} 
-                  previousResult={previousResult} // Kirim nilai sebelumnya ke komponen
+                  previousResult={previousResult} 
                 />
               ) : (
                 <div className="text-center p-12 bg-slate-50 rounded-2xl border border-slate-200">
