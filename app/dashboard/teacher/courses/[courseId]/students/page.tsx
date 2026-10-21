@@ -23,6 +23,7 @@ export default async function StudentAnalyticsPage({
 
   if (!course || course.teacher_id !== user.id) return notFound()
 
+  // 1. Ambil semua pelajaran di kursus ini
   const { data: modules } = await supabase
     .from('modules')
     .select('id, lessons(id)')
@@ -31,21 +32,38 @@ export default async function StudentAnalyticsPage({
   const allLessonIds = modules?.flatMap(m => m.lessons.map((l: any) => l.id)) || []
   const totalLessons = allLessonIds.length
 
-  const { data: students } = await supabase
-    .from('profiles')
-    .select('id, full_name')
-    .eq('role', 'student')
+  // 2. Ambil ID siswa yang terdaftar di kelas ini
+  const { data: enrollments } = await supabase
+    .from('enrollments')
+    .select('student_id')
+    .eq('course_id', courseId)
 
+  const studentIds = enrollments?.map(e => e.student_id) || []
+
+  // 3. Ambil profil siswa berdasarkan ID di atas
+  let students: any[] = []
+  if (studentIds.length > 0) {
+    const { data: profiles } = await supabase
+      .from('profiles')
+      .select('id, full_name')
+      .in('id', studentIds)
+    
+    if (profiles) students = profiles
+  }
+
+  // 4. Ambil progres siswa
   let allProgress: any[] = []
-  if (allLessonIds.length > 0) {
+  if (allLessonIds.length > 0 && studentIds.length > 0) {
     const { data } = await supabase
       .from('student_progress')
       .select('student_id, lesson_id, completed')
       .in('lesson_id', allLessonIds)
+      .in('student_id', studentIds) // Filter hanya siswa di kelas ini
       .eq('completed', true)
     if (data) allProgress = data
   }
 
+  // 5. Ambil nilai kuis
   let quizResponses: any[] = []
   const { data: quizLessons } = await supabase
     .from('lessons')
@@ -55,15 +73,17 @@ export default async function StudentAnalyticsPage({
   
   const quizLessonIds = quizLessons?.map(l => l.id) || []
 
-  if (quizLessonIds.length > 0) {
+  if (quizLessonIds.length > 0 && studentIds.length > 0) {
     const { data } = await supabase
       .from('quiz_responses')
       .select('student_id, is_correct, quiz_questions!inner(lesson_id, points)')
       .in('quiz_questions.lesson_id', quizLessonIds)
+      .in('student_id', studentIds) // Filter hanya siswa di kelas ini
     if (data) quizResponses = data
   }
 
-  const studentData = students?.map(student => {
+  // 6. Olah data
+  const studentData = students.map((student: any) => {
     const completedCount = allProgress.filter(p => p.student_id === student.id).length
     const progressPercentage = totalLessons > 0 ? Math.round((completedCount / totalLessons) * 100) : 0
 
@@ -82,7 +102,7 @@ export default async function StudentAnalyticsPage({
       hasDoneQuiz,
       quizPercentage
     }
-  }).sort((a, b) => b.progressPercentage - a.progressPercentage) // Urutkan dari yang paling rajin
+  }).sort((a: any, b: any) => b.progressPercentage - a.progressPercentage)
 
   return (
     <div className="min-h-screen bg-slate-50 pb-20">
@@ -109,7 +129,7 @@ export default async function StudentAnalyticsPage({
               </thead>
               <tbody>
                 {studentData && studentData.length > 0 ? (
-                  studentData.map((student) => (
+                  studentData.map((student: any) => (
                     <tr key={student.id} className="border-b border-slate-100 hover:bg-slate-50/50 transition">
                       <td className="p-5">
                         <div className="flex items-center gap-3">
