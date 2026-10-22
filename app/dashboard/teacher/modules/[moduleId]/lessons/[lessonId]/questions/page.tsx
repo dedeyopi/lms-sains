@@ -23,13 +23,14 @@ export default function ManageQuestionsPage({
   const [options, setOptions] = useState<Record<string, string>>({ a: '', b: '', c: '', d: '' })
   const [correctAnswer, setCorrectAnswer] = useState<string | string[]>('a')
   
-  // State Khusus Menjodohkan & Isian
+  // State Khusus Menjodohkan (Dimulai dengan 2 pasangan)
   const [matchPairs, setMatchPairs] = useState([
-    { left: '', right: '' }, { left: '', right: '' }, { left: '', right: '' }
+    { left: '', right: '' }, 
+    { left: '', right: '' }
   ])
   const [shortAnswerKey, setShortAnswerKey] = useState('')
 
-  // Fungsi Fetch Soal dengan Error Handling
+  // Fungsi Fetch Soal
   const fetchQuestions = async () => {
     setLoading(true)
     const { data, error } = await supabase
@@ -56,10 +57,26 @@ export default function ManageQuestionsPage({
     setOptions({ a: '', b: '', c: '', d: '' })
     setCorrectAnswer(type === 'multiple_choice_complex' ? [] : 'a')
     setShortAnswerKey('')
+    setMatchPairs([{ left: '', right: '' }, { left: '', right: '' }]) // Reset ke 2 pasangan
     if (type === 'true_false') {
       setOptions({ a: 'Benar', b: 'Salah' })
     }
   }, [type])
+
+  // Fungsi Tambah & Hapus Pasangan Menjodohkan
+  const addMatchPair = () => {
+    setMatchPairs([...matchPairs, { left: '', right: '' }])
+  }
+
+  const removeMatchPair = (index: number) => {
+    if (matchPairs.length <= 2) {
+      alert("Minimal harus ada 2 pasangan soal menjodohkan.")
+      return
+    }
+    const newPairs = [...matchPairs]
+    newPairs.splice(index, 1)
+    setMatchPairs(newPairs)
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -70,7 +87,7 @@ export default function ManageQuestionsPage({
 
     if (type === 'matching') {
       finalOptions = { pairs: matchPairs }
-      finalCorrect = matchPairs.map(p => p.right)
+      finalCorrect = matchPairs.map(p => p.right) // Kunci jawaban adalah array dari sisi kanan
     } else if (type === 'multiple_choice_complex') {
       finalCorrect = correctAnswer 
     } else if (type === 'short_answer') {
@@ -97,9 +114,9 @@ export default function ManageQuestionsPage({
       alert('Soal berhasil ditambahkan!')
       setText('')
       setOptions({ a: '', b: '', c: '', d: '' })
-      setMatchPairs([{ left: '', right: '' }, { left: '', right: '' }, { left: '', right: '' }])
+      setMatchPairs([{ left: '', right: '' }, { left: '', right: '' }])
       setShortAnswerKey('')
-      fetchQuestions() // Muat ulang daftar soal
+      fetchQuestions()
     }
     setSaving(false)
   }
@@ -169,8 +186,8 @@ export default function ManageQuestionsPage({
               </div>
 
               <div>
-                <label className="block text-sm font-bold text-slate-700 mb-2">Pertanyaan</label>
-                <textarea value={text} onChange={(e) => setText(e.target.value)} required rows={3} className="w-full px-3 py-2 bg-slate-50 border rounded-xl" placeholder="Tulis pertanyaan..." />
+                <label className="block text-sm font-bold text-slate-700 mb-2">Pertanyaan / Instruksi</label>
+                <textarea value={text} onChange={(e) => setText(e.target.value)} required rows={3} className="w-full px-3 py-2 bg-slate-50 border rounded-xl" placeholder="Tulis pertanyaan atau instruksi..." />
               </div>
 
               {/* Render Form Berdasarkan Tipe Soal */}
@@ -199,24 +216,56 @@ export default function ManageQuestionsPage({
                 </div>
               )}
 
+              {/* FORM MENJODOHKAN YANG BARU */}
               {type === 'matching' && (
-                <div className="space-y-3 bg-slate-50 p-4 rounded-xl">
-                  <p className="text-xs text-slate-500 mb-2">Isi pasangan yang benar (Kiri dan Kanan).</p>
+                <div className="space-y-3 bg-slate-50 p-4 rounded-xl border border-slate-200">
+                  <p className="text-xs text-slate-500 mb-2 font-medium">Masukkan pasangan yang benar (Kiri dan Kanan).</p>
+                  
                   {matchPairs.map((pair, i) => (
                     <div key={i} className="flex gap-2 items-center">
-                      <input type="text" value={pair.left} onChange={(e) => {
-                        const newPairs = [...matchPairs];
-                        newPairs[i].left = e.target.value;
-                        setMatchPairs(newPairs);
-                      }} required className="flex-1 px-3 py-1.5 border rounded-lg text-sm" placeholder="Sisi Kiri (A)" />
-                      <span className="text-slate-400">&rarr;</span>
-                      <input type="text" value={pair.right} onChange={(e) => {
-                        const newPairs = [...matchPairs];
-                        newPairs[i].right = e.target.value;
-                        setMatchPairs(newPairs);
-                      }} required className="flex-1 px-3 py-1.5 border rounded-lg text-sm" placeholder="Pasangan Benar" />
+                      <input 
+                        type="text" 
+                        value={pair.left} 
+                        onChange={(e) => {
+                          const newPairs = [...matchPairs];
+                          newPairs[i].left = e.target.value;
+                          setMatchPairs(newPairs);
+                        }} 
+                        required 
+                        className="flex-1 px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-blue-500" 
+                        placeholder="Sisi Kiri (Soal)" 
+                      />
+                      <span className="text-slate-400 font-bold">&rarr;</span>
+                      <input 
+                        type="text" 
+                        value={pair.right} 
+                        onChange={(e) => {
+                          const newPairs = [...matchPairs];
+                          newPairs[i].right = e.target.value;
+                          setMatchPairs(newPairs);
+                        }} 
+                        required 
+                        className="flex-1 px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-blue-500" 
+                        placeholder="Pasangan Benar" 
+                      />
+                      <button 
+                        type="button" 
+                        onClick={() => removeMatchPair(i)}
+                        className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition"
+                        title="Hapus pasangan"
+                      >
+                        ✕
+                      </button>
                     </div>
                   ))}
+
+                  <button 
+                    type="button" 
+                    onClick={addMatchPair}
+                    className="mt-2 text-sm font-bold text-blue-600 bg-blue-50 px-3 py-2 rounded-lg hover:bg-blue-100 transition w-full border border-blue-200 border-dashed"
+                  >
+                    + Tambah Pasangan
+                  </button>
                 </div>
               )}
 
@@ -234,7 +283,7 @@ export default function ManageQuestionsPage({
                 </div>
               )}
 
-              <button type="submit" disabled={saving} className="w-full bg-slate-900 text-white py-3 rounded-xl font-bold hover:bg-slate-800 disabled:bg-slate-400">
+              <button type="submit" disabled={saving} className="w-full bg-slate-900 text-white py-3 rounded-xl font-bold hover:bg-slate-800 disabled:bg-slate-400 mt-4">
                 {saving ? 'Menyimpan...' : 'Simpan Soal'}
               </button>
             </form>
