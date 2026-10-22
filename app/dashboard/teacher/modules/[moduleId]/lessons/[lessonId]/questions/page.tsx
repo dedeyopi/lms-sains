@@ -14,23 +14,20 @@ export default function ManageQuestionsPage({
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
 
-  // State Form
   const [type, setType] = useState('multiple_choice')
   const [text, setText] = useState('')
   const [points, setPoints] = useState(10)
   
-  // State Dinamis untuk Opsi
   const [options, setOptions] = useState<Record<string, string>>({ a: '', b: '', c: '', d: '' })
   const [correctAnswer, setCorrectAnswer] = useState<string | string[]>('a')
   
-  // State Khusus Menjodohkan (Dimulai dengan 2 pasangan)
+  // Menjodohkan (Dimulai dengan 2 pasangan)
   const [matchPairs, setMatchPairs] = useState([
     { left: '', right: '' }, 
     { left: '', right: '' }
   ])
   const [shortAnswerKey, setShortAnswerKey] = useState('')
 
-  // Fungsi Fetch Soal
   const fetchQuestions = async () => {
     setLoading(true)
     const { data, error } = await supabase
@@ -52,18 +49,16 @@ export default function ManageQuestionsPage({
     if (lessonId) fetchQuestions() 
   }, [lessonId])
 
-  // Reset form saat tipe berubah
   useEffect(() => {
     setOptions({ a: '', b: '', c: '', d: '' })
     setCorrectAnswer(type === 'multiple_choice_complex' ? [] : 'a')
     setShortAnswerKey('')
-    setMatchPairs([{ left: '', right: '' }, { left: '', right: '' }]) // Reset ke 2 pasangan
+    setMatchPairs([{ left: '', right: '' }, { left: '', right: '' }])
     if (type === 'true_false') {
       setOptions({ a: 'Benar', b: 'Salah' })
     }
   }, [type])
 
-  // Fungsi Tambah & Hapus Pasangan Menjodohkan
   const addMatchPair = () => {
     setMatchPairs([...matchPairs, { left: '', right: '' }])
   }
@@ -87,7 +82,7 @@ export default function ManageQuestionsPage({
 
     if (type === 'matching') {
       finalOptions = { pairs: matchPairs }
-      finalCorrect = matchPairs.map(p => p.right) // Kunci jawaban adalah array dari sisi kanan
+      finalCorrect = matchPairs.map(p => p.right) 
     } else if (type === 'multiple_choice_complex') {
       finalCorrect = correctAnswer 
     } else if (type === 'short_answer') {
@@ -130,13 +125,16 @@ export default function ManageQuestionsPage({
   }
 
   return (
+    // 1. Lebarkan kontainer utama menjadi max-w-6xl
     <div className="min-h-screen bg-slate-50 py-12 px-6">
-      <div className="max-w-4xl mx-auto">
+      <div className="max-w-6xl mx-auto">
         <button onClick={() => window.history.back()} className="text-slate-500 hover:text-blue-600 text-sm font-medium flex items-center gap-2 mb-6">
           &larr; Kembali ke Manajemen Kelas
         </button>
 
-        <div className="grid md:grid-cols-2 gap-8">
+        {/* 2. Ubah grid menjadi lg:grid-cols-2 agar di layar sedang form turun ke bawah */}
+        <div className="grid lg:grid-cols-2 gap-8 items-start">
+          
           {/* KOLOM KIRI: Daftar Soal */}
           <div>
             <h2 className="text-2xl font-bold text-slate-800 mb-4">Daftar Soal ({questions.length})</h2>
@@ -187,10 +185,9 @@ export default function ManageQuestionsPage({
 
               <div>
                 <label className="block text-sm font-bold text-slate-700 mb-2">Pertanyaan / Instruksi</label>
-                <textarea value={text} onChange={(e) => setText(e.target.value)} required rows={3} className="w-full px-3 py-2 bg-slate-50 border rounded-xl" placeholder="Tulis pertanyaan atau instruksi..." />
+                <textarea value={text} onChange={(e) => setText(e.target.value)} required rows={3} className="w-full px-3 py-2 bg-slate-50 border rounded-xl" placeholder="Tulis pertanyaan..." />
               </div>
 
-              {/* Render Form Berdasarkan Tipe Soal */}
               {type !== 'matching' && type !== 'short_answer' && type !== 'essay' && (
                 <div className="space-y-3 bg-slate-50 p-4 rounded-xl">
                   {['a', 'b', 'c', 'd'].map((opt) => (
@@ -207,16 +204,17 @@ export default function ManageQuestionsPage({
                             setCorrectAnswer(opt);
                           }
                         }}
-                        className="w-5 h-5 text-blue-600 rounded"
+                        className="w-5 h-5 text-blue-600 rounded flex-shrink-0"
                       />
-                      <span className="uppercase font-bold text-slate-500 w-4">{opt}.</span>
-                      <input type="text" value={options[opt] || ''} onChange={(e) => setOptions({...options, [opt]: e.target.value})} required className="flex-1 px-3 py-1.5 border rounded-lg text-sm" placeholder={`Isi pilihan ${opt.toUpperCase()}`} />
+                      <span className="uppercase font-bold text-slate-500 w-4 flex-shrink-0">{opt}.</span>
+                      {/* 3. Tambahkan min-w-0 agar input mau menyusut */}
+                      <input type="text" value={options[opt] || ''} onChange={(e) => setOptions({...options, [opt]: e.target.value})} required className="flex-1 min-w-0 px-3 py-1.5 border rounded-lg text-sm" placeholder={`Isi pilihan ${opt.toUpperCase()}`} />
                     </div>
                   ))}
                 </div>
               )}
 
-              {/* FORM MENJODOHKAN YANG BARU */}
+              {/* FORM MENJODOHKAN */}
               {type === 'matching' && (
                 <div className="space-y-3 bg-slate-50 p-4 rounded-xl border border-slate-200">
                   <p className="text-xs text-slate-500 mb-2 font-medium">Masukkan pasangan yang benar (Kiri dan Kanan).</p>
@@ -232,10 +230,10 @@ export default function ManageQuestionsPage({
                           setMatchPairs(newPairs);
                         }} 
                         required 
-                        className="flex-1 px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-blue-500" 
-                        placeholder="Sisi Kiri (Soal)" 
+                        className="flex-1 min-w-0 px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-blue-500" 
+                        placeholder="Sisi Kiri" 
                       />
-                      <span className="text-slate-400 font-bold">&rarr;</span>
+                      <span className="text-slate-400 font-bold flex-shrink-0">&rarr;</span>
                       <input 
                         type="text" 
                         value={pair.right} 
@@ -245,13 +243,13 @@ export default function ManageQuestionsPage({
                           setMatchPairs(newPairs);
                         }} 
                         required 
-                        className="flex-1 px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-blue-500" 
+                        className="flex-1 min-w-0 px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-blue-500" 
                         placeholder="Pasangan Benar" 
                       />
                       <button 
                         type="button" 
                         onClick={() => removeMatchPair(i)}
-                        className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition"
+                        className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition flex-shrink-0"
                         title="Hapus pasangan"
                       >
                         ✕
@@ -273,7 +271,6 @@ export default function ManageQuestionsPage({
                 <div className="bg-slate-50 p-4 rounded-xl">
                   <label className="block text-sm font-bold text-slate-700 mb-2">Kunci Jawaban (Teks)</label>
                   <input type="text" value={shortAnswerKey} onChange={(e) => setShortAnswerKey(e.target.value)} required className="w-full px-3 py-2 border rounded-lg" placeholder="Contoh: Karbon Dioksida" />
-                  <p className="text-xs text-slate-500 mt-2">*Sistem akan mencocokkan jawaban siswa secara otomatis.</p>
                 </div>
               )}
 
