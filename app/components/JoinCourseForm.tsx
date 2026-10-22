@@ -24,15 +24,15 @@ export default function JoinCourseForm({ userId }: { userId: string }) {
   }
 
   return (
-    <form onSubmit={handleJoin} className="bg-white/10 backdrop-blur-md p-2 rounded-2xl border border-white/20 flex gap-2">
+    <form onSubmit={handleJoin} className="bg-white/10 backdrop-blur-md p-2 rounded-2xl border border-white/20 flex flex-col sm:flex-row gap-2 shadow-2xl">
       <input
         type="text" value={code} onChange={(e) => setCode(e.target.value.toUpperCase())}
-        placeholder="Kode Kelas" required maxLength={6}
-        className="flex-1 bg-white/90 text-slate-800 px-4 py-3 rounded-xl uppercase font-mono font-bold tracking-widest focus:outline-none focus:ring-2 focus:ring-white/50"
+        placeholder="Kode Kelas (Cth: A1B2C3)" required maxLength={6}
+        className="flex-1 bg-white text-slate-800 px-5 py-3.5 rounded-xl uppercase font-mono font-bold tracking-widest focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder:font-sans placeholder:tracking-normal placeholder:font-medium text-sm"
       />
       <button type="submit" disabled={loading}
-        className="bg-slate-900 text-white px-6 py-3 rounded-xl font-bold hover:bg-slate-800 transition disabled:bg-slate-400 whitespace-nowrap">
-        {loading ? '...' : 'Gabung'}
+        className="bg-blue-600 text-white px-8 py-3.5 rounded-xl font-bold hover:bg-blue-500 transition disabled:bg-slate-400 whitespace-nowrap active:scale-95 text-sm shadow-lg shadow-blue-600/30">
+        {loading ? 'Memproses...' : 'Gabung Kelas'}
       </button>
     </form>
   )
