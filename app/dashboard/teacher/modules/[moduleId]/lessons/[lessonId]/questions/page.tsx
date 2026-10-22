@@ -1,7 +1,6 @@
 'use client'
 import { useState, use, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { useRouter } from 'next/navigation'
 
 export default function ManageQuestionsPage({
   params,
@@ -15,30 +14,51 @@ export default function ManageQuestionsPage({
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
 
+  // State Form
   const [type, setType] = useState('multiple_choice')
   const [text, setText] = useState('')
   const [points, setPoints] = useState(10)
   
+  // State Dinamis untuk Opsi
   const [options, setOptions] = useState<Record<string, string>>({ a: '', b: '', c: '', d: '' })
   const [correctAnswer, setCorrectAnswer] = useState<string | string[]>('a')
-  const [matchPairs, setMatchPairs] = useState([{ left: '', right: '' }, { left: '', right: '' }, { left: '', right: '' }])
   
-  // State Khusus Isian & Esai
+  // State Khusus Menjodohkan & Isian
+  const [matchPairs, setMatchPairs] = useState([
+    { left: '', right: '' }, { left: '', right: '' }, { left: '', right: '' }
+  ])
   const [shortAnswerKey, setShortAnswerKey] = useState('')
 
+  // Fungsi Fetch Soal dengan Error Handling
   const fetchQuestions = async () => {
-    const { data } = await supabase.from('quiz_questions').select('*').eq('lesson_id', lessonId).order('created_at', { ascending: true })
-    if (data) setQuestions(data)
+    setLoading(true)
+    const { data, error } = await supabase
+      .from('quiz_questions')
+      .select('*')
+      .eq('lesson_id', lessonId)
+      .order('created_at', { ascending: true })
+    
+    if (error) {
+      console.error("Gagal memuat soal:", error)
+      alert("Gagal memuat soal: " + error.message)
+    } else if (data) {
+      setQuestions(data)
+    }
     setLoading(false)
   }
 
-  useEffect(() => { fetchQuestions() }, [lessonId])
+  useEffect(() => { 
+    if (lessonId) fetchQuestions() 
+  }, [lessonId])
 
+  // Reset form saat tipe berubah
   useEffect(() => {
     setOptions({ a: '', b: '', c: '', d: '' })
     setCorrectAnswer(type === 'multiple_choice_complex' ? [] : 'a')
     setShortAnswerKey('')
-    if (type === 'true_false') setOptions({ a: 'Benar', b: 'Salah' })
+    if (type === 'true_false') {
+      setOptions({ a: 'Benar', b: 'Salah' })
+    }
   }, [type])
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -54,7 +74,7 @@ export default function ManageQuestionsPage({
     } else if (type === 'multiple_choice_complex') {
       finalCorrect = correctAnswer 
     } else if (type === 'short_answer') {
-      finalOptions = {} // Tidak butuh opsi
+      finalOptions = {}
       finalCorrect = shortAnswerKey
     } else if (type === 'essay') {
       finalOptions = {}
@@ -71,6 +91,7 @@ export default function ManageQuestionsPage({
     })
 
     if (error) {
+      console.error("Gagal menyimpan soal:", error)
       alert('Gagal menyimpan soal: ' + error.message)
     } else {
       alert('Soal berhasil ditambahkan!')
@@ -78,19 +99,18 @@ export default function ManageQuestionsPage({
       setOptions({ a: '', b: '', c: '', d: '' })
       setMatchPairs([{ left: '', right: '' }, { left: '', right: '' }, { left: '', right: '' }])
       setShortAnswerKey('')
-      fetchQuestions()
+      fetchQuestions() // Muat ulang daftar soal
     }
     setSaving(false)
   }
 
   const handleDelete = async (id: string) => {
     if (confirm('Hapus soal ini?')) {
-      await supabase.from('quiz_questions').delete().eq('id', id)
-      fetchQuestions()
+      const { error } = await supabase.from('quiz_questions').delete().eq('id', id)
+      if (error) alert("Gagal menghapus: " + error.message)
+      else fetchQuestions()
     }
   }
-
-  if (loading) return <div className="p-10 text-center">Memuat soal...</div>
 
   return (
     <div className="min-h-screen bg-slate-50 py-12 px-6">
@@ -100,25 +120,32 @@ export default function ManageQuestionsPage({
         </button>
 
         <div className="grid md:grid-cols-2 gap-8">
+          {/* KOLOM KIRI: Daftar Soal */}
           <div>
             <h2 className="text-2xl font-bold text-slate-800 mb-4">Daftar Soal ({questions.length})</h2>
-            <div className="space-y-3">
-              {questions.map((q, idx) => (
-                <div key={q.id} className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
-                  <div className="flex justify-between items-start mb-2">
-                    <span className="text-xs font-bold text-blue-600 bg-blue-50 px-2 py-1 rounded">
-                      Soal {idx + 1} - {q.question_type.replace('_', ' ').toUpperCase()}
-                    </span>
-                    <button onClick={() => handleDelete(q.id)} className="text-red-500 hover:text-red-700 text-xs font-bold">Hapus</button>
+            
+            {loading ? (
+              <p className="text-slate-500 text-sm">Memuat soal...</p>
+            ) : (
+              <div className="space-y-3">
+                {questions.map((q, idx) => (
+                  <div key={q.id} className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
+                    <div className="flex justify-between items-start mb-2">
+                      <span className="text-[10px] font-bold text-blue-600 bg-blue-50 px-2 py-1 rounded-md uppercase tracking-wide">
+                        Soal {idx + 1} - {q.question_type.replace(/_/g, ' ')}
+                      </span>
+                      <button onClick={() => handleDelete(q.id)} className="text-red-500 hover:text-red-700 text-xs font-bold">Hapus</button>
+                    </div>
+                    <p className="text-slate-800 font-medium text-sm mt-2">{q.question_text}</p>
+                    <p className="text-xs text-slate-500 mt-2">Poin: {q.points}</p>
                   </div>
-                  <p className="text-slate-800 font-medium">{q.question_text}</p>
-                  <p className="text-xs text-slate-500 mt-2">Poin: {q.points}</p>
-                </div>
-              ))}
-              {questions.length === 0 && <p className="text-slate-500 text-sm italic">Belum ada soal.</p>}
-            </div>
+                ))}
+                {questions.length === 0 && <p className="text-slate-500 text-sm italic">Belum ada soal.</p>}
+              </div>
+            )}
           </div>
 
+          {/* KOLOM KANAN: Form Tambah Soal */}
           <div>
             <h2 className="text-2xl font-bold text-slate-800 mb-4">Buat Soal Baru</h2>
             <form onSubmit={handleSubmit} className="bg-white p-6 rounded-3xl shadow-xl border border-slate-100 space-y-5">
@@ -197,13 +224,13 @@ export default function ManageQuestionsPage({
                 <div className="bg-slate-50 p-4 rounded-xl">
                   <label className="block text-sm font-bold text-slate-700 mb-2">Kunci Jawaban (Teks)</label>
                   <input type="text" value={shortAnswerKey} onChange={(e) => setShortAnswerKey(e.target.value)} required className="w-full px-3 py-2 border rounded-lg" placeholder="Contoh: Karbon Dioksida" />
-                  <p className="text-xs text-slate-500 mt-2">*Sistem akan mencocokkan jawaban siswa secara otomatis (mengabaikan huruf besar/kecil).</p>
+                  <p className="text-xs text-slate-500 mt-2">*Sistem akan mencocokkan jawaban siswa secara otomatis.</p>
                 </div>
               )}
 
               {type === 'essay' && (
                 <div className="bg-amber-50 border border-amber-200 p-4 rounded-xl">
-                  <p className="text-sm text-amber-800 font-medium">Soal esai tidak dapat dinilai otomatis oleh sistem. Jawaban siswa akan disimpan dan dapat Anda periksa secara manual.</p>
+                  <p className="text-sm text-amber-800 font-medium">Soal esai tidak dapat dinilai otomatis. Jawaban siswa akan disimpan untuk diperiksa manual.</p>
                 </div>
               )}
 
