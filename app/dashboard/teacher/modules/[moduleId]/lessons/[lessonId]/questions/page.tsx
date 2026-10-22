@@ -2,7 +2,6 @@
 import { useState, use, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
-import DeleteButton from '@/app/components/DeleteButton'
 
 export default function ManageQuestionsPage({
   params,
@@ -16,21 +15,17 @@ export default function ManageQuestionsPage({
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
 
-  // State Form
   const [type, setType] = useState('multiple_choice')
   const [text, setText] = useState('')
   const [points, setPoints] = useState(10)
   
-  // State Dinamis untuk Opsi
   const [options, setOptions] = useState<Record<string, string>>({ a: '', b: '', c: '', d: '' })
   const [correctAnswer, setCorrectAnswer] = useState<string | string[]>('a')
+  const [matchPairs, setMatchPairs] = useState([{ left: '', right: '' }, { left: '', right: '' }, { left: '', right: '' }])
   
-  // State Khusus Menjodohkan
-  const [matchPairs, setMatchPairs] = useState([
-    { left: '', right: '' }, { left: '', right: '' }, { left: '', right: '' }
-  ])
+  // State Khusus Isian & Esai
+  const [shortAnswerKey, setShortAnswerKey] = useState('')
 
-  // Fungsi Fetch Soal
   const fetchQuestions = async () => {
     const { data } = await supabase.from('quiz_questions').select('*').eq('lesson_id', lessonId).order('created_at', { ascending: true })
     if (data) setQuestions(data)
@@ -39,13 +34,11 @@ export default function ManageQuestionsPage({
 
   useEffect(() => { fetchQuestions() }, [lessonId])
 
-  // Reset form saat tipe berubah
   useEffect(() => {
     setOptions({ a: '', b: '', c: '', d: '' })
     setCorrectAnswer(type === 'multiple_choice_complex' ? [] : 'a')
-    if (type === 'true_false') {
-      setOptions({ a: 'Benar', b: 'Salah' })
-    }
+    setShortAnswerKey('')
+    if (type === 'true_false') setOptions({ a: 'Benar', b: 'Salah' })
   }, [type])
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -57,9 +50,15 @@ export default function ManageQuestionsPage({
 
     if (type === 'matching') {
       finalOptions = { pairs: matchPairs }
-      finalCorrect = matchPairs.map(p => p.right) // Kunci jawaban adalah array dari sisi kanan yang benar
+      finalCorrect = matchPairs.map(p => p.right)
     } else if (type === 'multiple_choice_complex') {
-      finalCorrect = correctAnswer // Array of strings (misal: ['a', 'c'])
+      finalCorrect = correctAnswer 
+    } else if (type === 'short_answer') {
+      finalOptions = {} // Tidak butuh opsi
+      finalCorrect = shortAnswerKey
+    } else if (type === 'essay') {
+      finalOptions = {}
+      finalCorrect = 'ESSAY_NO_AUTO_GRADE'
     }
 
     const { error } = await supabase.from('quiz_questions').insert({
@@ -67,7 +66,7 @@ export default function ManageQuestionsPage({
       question_text: text,
       question_type: type,
       options: finalOptions,
-      correct_answer: JSON.stringify(finalCorrect), // Simpan sebagai JSON string
+      correct_answer: JSON.stringify(finalCorrect), 
       points,
     })
 
@@ -78,6 +77,7 @@ export default function ManageQuestionsPage({
       setText('')
       setOptions({ a: '', b: '', c: '', d: '' })
       setMatchPairs([{ left: '', right: '' }, { left: '', right: '' }, { left: '', right: '' }])
+      setShortAnswerKey('')
       fetchQuestions()
     }
     setSaving(false)
@@ -100,7 +100,6 @@ export default function ManageQuestionsPage({
         </button>
 
         <div className="grid md:grid-cols-2 gap-8">
-          {/* KOLOM KIRI: Daftar Soal */}
           <div>
             <h2 className="text-2xl font-bold text-slate-800 mb-4">Daftar Soal ({questions.length})</h2>
             <div className="space-y-3">
@@ -120,7 +119,6 @@ export default function ManageQuestionsPage({
             </div>
           </div>
 
-          {/* KOLOM KANAN: Form Tambah Soal */}
           <div>
             <h2 className="text-2xl font-bold text-slate-800 mb-4">Buat Soal Baru</h2>
             <form onSubmit={handleSubmit} className="bg-white p-6 rounded-3xl shadow-xl border border-slate-100 space-y-5">
@@ -130,9 +128,11 @@ export default function ManageQuestionsPage({
                   <label className="block text-sm font-bold text-slate-700 mb-2">Tipe Soal</label>
                   <select value={type} onChange={(e) => setType(e.target.value)} className="w-full px-3 py-2 bg-slate-50 border rounded-xl font-medium">
                     <option value="multiple_choice">Pilihan Ganda</option>
-                    <option value="multiple_choice_complex">Ganda Kompleks (Multi-Jawaban)</option>
+                    <option value="multiple_choice_complex">Ganda Kompleks</option>
                     <option value="true_false">Benar / Salah</option>
                     <option value="matching">Menjodohkan</option>
+                    <option value="short_answer">Isian Singkat</option>
+                    <option value="essay">Esai (Uraian)</option>
                   </select>
                 </div>
                 <div>
@@ -147,7 +147,7 @@ export default function ManageQuestionsPage({
               </div>
 
               {/* Render Form Berdasarkan Tipe Soal */}
-              {type !== 'matching' && (
+              {type !== 'matching' && type !== 'short_answer' && type !== 'essay' && (
                 <div className="space-y-3 bg-slate-50 p-4 rounded-xl">
                   {['a', 'b', 'c', 'd'].map((opt) => (
                     <div key={opt} className="flex items-center gap-3">
@@ -190,6 +190,20 @@ export default function ManageQuestionsPage({
                       }} required className="flex-1 px-3 py-1.5 border rounded-lg text-sm" placeholder="Pasangan Benar" />
                     </div>
                   ))}
+                </div>
+              )}
+
+              {type === 'short_answer' && (
+                <div className="bg-slate-50 p-4 rounded-xl">
+                  <label className="block text-sm font-bold text-slate-700 mb-2">Kunci Jawaban (Teks)</label>
+                  <input type="text" value={shortAnswerKey} onChange={(e) => setShortAnswerKey(e.target.value)} required className="w-full px-3 py-2 border rounded-lg" placeholder="Contoh: Karbon Dioksida" />
+                  <p className="text-xs text-slate-500 mt-2">*Sistem akan mencocokkan jawaban siswa secara otomatis (mengabaikan huruf besar/kecil).</p>
+                </div>
+              )}
+
+              {type === 'essay' && (
+                <div className="bg-amber-50 border border-amber-200 p-4 rounded-xl">
+                  <p className="text-sm text-amber-800 font-medium">Soal esai tidak dapat dinilai otomatis oleh sistem. Jawaban siswa akan disimpan dan dapat Anda periksa secara manual.</p>
                 </div>
               )}
 

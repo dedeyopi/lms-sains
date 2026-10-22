@@ -12,7 +12,6 @@ Deno.serve(async (req) => {
     const { data: questions, error } = await supabase.from('quiz_questions').select('*').eq('lesson_id', lessonId)
     if (error || !questions) throw new Error('Gagal mengambil soal')
 
-    // Hapus jawaban lama jika siswa mengulang (opsional, tergantung kebijakan)
     const qIds = questions.map(q => q.id)
     await supabase.from('quiz_responses').delete().eq('student_id', studentId).in('question_id', qIds)
 
@@ -25,33 +24,35 @@ Deno.serve(async (req) => {
       const studentAnswer = answers.find((a: any) => a.questionId === q.id)?.answer || ''
       let isCorrect = false
 
-      // --- LOGIKA PENILAIAN BERDASARKAN TIPE SOAL ---
       if (q.question_type === 'multiple_choice' || q.question_type === 'true_false') {
-        // Jawaban siswa (misal: 'a') dibandingkan dengan kunci (misal: 'a')
         const correctKey = JSON.parse(q.correct_answer)
         isCorrect = studentAnswer === correctKey
-
-      } else if (q.question_type === 'multiple_choice_complex') {
-        // Siswa mengirim array of keys (misal: ['a', 'c'])
-        const correctKeys = JSON.parse(q.correct_answer) // Array
+      } 
+      else if (q.question_type === 'multiple_choice_complex') {
+        const correctKeys = JSON.parse(q.correct_answer)
         const studentKeys = Array.isArray(studentAnswer) ? studentAnswer : []
-        
-        // Cek apakah isi array sama persis (tanpa memedulikan urutan)
-        isCorrect = correctKeys.length === studentKeys.length && 
-                    correctKeys.every((k: string) => studentKeys.includes(k))
-
-      } else if (q.question_type === 'matching') {
-        // Siswa mengirim array of pairs (misal: [{left: 'A', right: '1'}, ...])
-        // Kunci jawaban adalah array of right answers yang benar
+        isCorrect = correctKeys.length === studentKeys.length && correctKeys.every((k: string) => studentKeys.includes(k))
+      } 
+      else if (q.question_type === 'matching') {
         const correctPairs = JSON.parse(q.correct_answer)
         const studentPairs = Array.isArray(studentAnswer) ? studentAnswer : []
-        
         let matchCount = 0
         studentPairs.forEach((pair: any) => {
           if (correctPairs.includes(pair.right)) matchCount++
         })
-        // Anggap benar jika semua pasangan cocok
         isCorrect = matchCount === correctPairs.length
+      }
+      // --- LOGIKA BARU: ISIAN SINGKAT ---
+      else if (q.question_type === 'short_answer') {
+        const correctText = JSON.parse(q.correct_answer)?.toLowerCase().trim() || ''
+        const studentText = studentAnswer.toLowerCase().trim()
+        // Cek apakah teks sama persis (mengabaikan huruf besar/kecil dan spasi berlebih)
+        isCorrect = studentText === correctText
+      }
+      // --- LOGIKA BARU: ESAI ---
+      else if (q.question_type === 'essay') {
+        // Esai tidak dinilai otomatis. Nilai 0, tapi jawaban tetap disimpan.
+        isCorrect = false 
       }
 
       if (isCorrect) totalScore += q.points

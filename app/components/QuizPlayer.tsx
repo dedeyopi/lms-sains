@@ -45,7 +45,7 @@ export default function QuizPlayer({
       <div className="text-center p-8 bg-emerald-50 rounded-2xl border border-emerald-200 shadow-sm">
         <div className="text-5xl mb-4">🏆</div>
         <h2 className="text-2xl font-bold text-emerald-800 mb-2">Kuis Selesai</h2>
-        <p className="text-emerald-700 mb-4">Skor Anda:</p>
+        <p className="text-emerald-700 mb-4">Skor Anda (Soal Esai akan dinilai manual oleh guru):</p>
         <div className="text-6xl font-black text-emerald-600 mb-6">
           {result.totalScore} <span className="text-3xl text-emerald-400">/ {result.maxScore}</span>
         </div>
@@ -59,7 +59,6 @@ export default function QuizPlayer({
       {questions.map((q, index) => (
         <div key={q.id} className="bg-white p-6 md:p-8 rounded-2xl shadow-sm border border-slate-200">
           
-          {/* Header Soal CBT */}
           <div className="flex items-center gap-3 mb-4">
             <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center font-bold text-sm">
               {index + 1}
@@ -71,10 +70,8 @@ export default function QuizPlayer({
 
           <h3 className="font-bold text-lg text-slate-800 mb-6 leading-relaxed">{q.question_text}</h3>
           
-          {/* Render Input Berdasarkan Tipe */}
           <div className="space-y-3">
             
-            {/* Pilihan Ganda Biasa / Benar Salah */}
             {(q.question_type === 'multiple_choice' || q.question_type === 'true_false') && 
               Object.entries(q.options).map(([key, value]) => (
                 <label key={key} className={`flex items-center p-3 border rounded-xl cursor-pointer transition ${answers[q.id] === key ? 'border-blue-500 bg-blue-50' : 'border-slate-200 hover:bg-slate-50'}`}>
@@ -85,7 +82,6 @@ export default function QuizPlayer({
               ))
             }
 
-            {/* Pilihan Ganda Kompleks (Checkbox) */}
             {q.question_type === 'multiple_choice_complex' && 
               Object.entries(q.options).map(([key, value]) => {
                 const currentAnswers = answers[q.id] || [];
@@ -103,7 +99,6 @@ export default function QuizPlayer({
               })
             }
 
-            {/* Menjodohkan (Matching) */}
             {q.question_type === 'matching' && (
               <div className="grid gap-3">
                 <p className="text-sm text-slate-500 italic mb-1">Jodohkan pernyataan di kiri dengan jawaban yang tepat di kanan.</p>
@@ -128,6 +123,33 @@ export default function QuizPlayer({
                     </div>
                   )
                 })}
+              </div>
+            )}
+
+            {/* --- FORM BARU: ISIAN SINGKAT --- */}
+            {q.question_type === 'short_answer' && (
+              <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
+                <input 
+                  type="text" 
+                  value={answers[q.id] || ''} 
+                  onChange={(e) => setAnswers({ ...answers, [q.id]: e.target.value })} 
+                  className="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500" 
+                  placeholder="Ketik jawaban singkat Anda di sini..." 
+                />
+              </div>
+            )}
+
+            {/* --- FORM BARU: ESAI --- */}
+            {q.question_type === 'essay' && (
+              <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
+                <textarea 
+                  value={answers[q.id] || ''} 
+                  onChange={(e) => setAnswers({ ...answers, [q.id]: e.target.value })} 
+                  rows={5}
+                  className="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500" 
+                  placeholder="Ketik jawaban uraian Anda di sini..." 
+                />
+                <p className="text-xs text-slate-500 mt-2">*Jawaban esai akan diperiksa secara manual oleh guru.</p>
               </div>
             )}
 
