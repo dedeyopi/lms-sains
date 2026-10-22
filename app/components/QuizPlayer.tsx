@@ -4,21 +4,13 @@ import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 
 export default function QuizPlayer({ 
-  lessonId, 
-  questions, 
-  userId,
-  courseId,
-  previousResult // <-- PROP BARU: Untuk menerima nilai dari server
+  lessonId, questions, userId, courseId, previousResult 
 }: { 
-  lessonId: string, 
-  questions: any[], 
-  userId: string,
-  courseId: string,
-  previousResult?: { totalScore: number, maxScore: number } | null
+  lessonId: string, questions: any[], userId: string, courseId: string, previousResult?: { totalScore: number, maxScore: number } | null
 }) {
-  const [answers, setAnswers] = useState<Record<string, string>>({})
+  const [answers, setAnswers] = useState<Record<string, any>>({})
   const [loading, setLoading] = useState(false)
-  const [result, setResult] = useState<any>(previousResult || null) // Inisialisasi dengan nilai sebelumnya
+  const [result, setResult] = useState<any>(previousResult || null)
   const supabase = createClient()
   const router = useRouter()
 
@@ -29,7 +21,6 @@ export default function QuizPlayer({
     }
 
     setLoading(true)
-    
     const formattedAnswers = Object.keys(answers).map(qId => ({
       questionId: qId,
       answer: answers[qId]
@@ -49,57 +40,103 @@ export default function QuizPlayer({
     setLoading(false)
   }
 
-  // JIKA SUDAH ADA NILAI (BARU SELESAI ATAU SUDAH PERNAH MENGERJAKAN)
   if (result) {
     return (
-      <div className="text-center p-8 bg-emerald-50 rounded-2xl border border-emerald-200">
+      <div className="text-center p-8 bg-emerald-50 rounded-2xl border border-emerald-200 shadow-sm">
         <div className="text-5xl mb-4">🏆</div>
-        <h2 className="text-2xl font-bold text-emerald-800 mb-2">Kuis Sudah Selesai</h2>
-        <p className="text-emerald-700 mb-4">Anda telah menyelesaikan kuis ini dengan skor:</p>
+        <h2 className="text-2xl font-bold text-emerald-800 mb-2">Kuis Selesai</h2>
+        <p className="text-emerald-700 mb-4">Skor Anda:</p>
         <div className="text-6xl font-black text-emerald-600 mb-6">
           {result.totalScore} <span className="text-3xl text-emerald-400">/ {result.maxScore}</span>
         </div>
-        
-        <button 
-          onClick={() => router.push(`/dashboard/courses/${courseId}`)} 
-          className="bg-emerald-600 text-white px-8 py-3 rounded-xl font-bold hover:bg-emerald-700 transition shadow-lg shadow-emerald-600/30"
-        >
-          Kembali ke Daftar Materi
-        </button>
+        <button onClick={() => router.push(`/dashboard/courses/${courseId}`)} className="bg-emerald-600 text-white px-8 py-3 rounded-xl font-bold hover:bg-emerald-700 transition shadow-lg">Kembali ke Daftar Materi</button>
       </div>
     )
   }
 
-  // JIKA BELUM PERNAH MENGERJAKAN, TAMPILKAN SOAL
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       {questions.map((q, index) => (
-        <div key={q.id} className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
-          <h3 className="font-bold text-lg text-slate-800 mb-4">{index + 1}. {q.question_text}</h3>
+        <div key={q.id} className="bg-white p-6 md:p-8 rounded-2xl shadow-sm border border-slate-200">
+          
+          {/* Header Soal CBT */}
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center font-bold text-sm">
+              {index + 1}
+            </div>
+            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+              {q.question_type.replace('_', ' ')}
+            </span>
+          </div>
+
+          <h3 className="font-bold text-lg text-slate-800 mb-6 leading-relaxed">{q.question_text}</h3>
+          
+          {/* Render Input Berdasarkan Tipe */}
           <div className="space-y-3">
-            {Object.entries(q.options).map(([key, value]) => (
-              <label key={key} className="flex items-center p-3 border border-slate-200 rounded-xl hover:bg-slate-50 cursor-pointer transition">
-                <input
-                  type="radio"
-                  name={`question-${q.id}`}
-                  value={value as string}
-                  onChange={(e) => setAnswers({ ...answers, [q.id]: e.target.value })}
-                  className="mr-3 w-5 h-5 text-blue-600 focus:ring-blue-500 border-slate-300"
-                />
-                <span className="uppercase font-bold mr-3 text-slate-400">{key}.</span>
-                <span className="text-slate-700 font-medium">{value as string}</span>
-              </label>
-            ))}
+            
+            {/* Pilihan Ganda Biasa / Benar Salah */}
+            {(q.question_type === 'multiple_choice' || q.question_type === 'true_false') && 
+              Object.entries(q.options).map(([key, value]) => (
+                <label key={key} className={`flex items-center p-3 border rounded-xl cursor-pointer transition ${answers[q.id] === key ? 'border-blue-500 bg-blue-50' : 'border-slate-200 hover:bg-slate-50'}`}>
+                  <input type="radio" name={`q-${q.id}`} value={key} onChange={(e) => setAnswers({ ...answers, [q.id]: e.target.value })} className="mr-3 w-5 h-5 text-blue-600" />
+                  <span className="uppercase font-bold mr-3 text-slate-400">{key}.</span>
+                  <span className="text-slate-700 font-medium">{value as string}</span>
+                </label>
+              ))
+            }
+
+            {/* Pilihan Ganda Kompleks (Checkbox) */}
+            {q.question_type === 'multiple_choice_complex' && 
+              Object.entries(q.options).map(([key, value]) => {
+                const currentAnswers = answers[q.id] || [];
+                const isChecked = currentAnswers.includes(key);
+                return (
+                  <label key={key} className={`flex items-center p-3 border rounded-xl cursor-pointer transition ${isChecked ? 'border-blue-500 bg-blue-50' : 'border-slate-200 hover:bg-slate-50'}`}>
+                    <input type="checkbox" checked={isChecked} onChange={(e) => {
+                      const newAns = e.target.checked ? [...currentAnswers, key] : currentAnswers.filter((k: string) => k !== key);
+                      setAnswers({ ...answers, [q.id]: newAns });
+                    }} className="mr-3 w-5 h-5 text-blue-600 rounded" />
+                    <span className="uppercase font-bold mr-3 text-slate-400">{key}.</span>
+                    <span className="text-slate-700 font-medium">{value as string}</span>
+                  </label>
+                )
+              })
+            }
+
+            {/* Menjodohkan (Matching) */}
+            {q.question_type === 'matching' && (
+              <div className="grid gap-3">
+                <p className="text-sm text-slate-500 italic mb-1">Jodohkan pernyataan di kiri dengan jawaban yang tepat di kanan.</p>
+                {q.options.pairs.map((pair: any, i: number) => {
+                  const currentMatch = answers[q.id] || [];
+                  return (
+                    <div key={i} className="flex flex-col sm:flex-row items-center gap-3 bg-slate-50 p-3 rounded-xl border border-slate-200">
+                      <div className="flex-1 font-medium text-slate-700 w-full">{pair.left}</div>
+                      <span className="text-slate-400 hidden sm:block">&rarr;</span>
+                      <select 
+                        className="flex-1 w-full p-2 border rounded-lg bg-white"
+                        onChange={(e) => {
+                          const newMatches = [...currentMatch.filter((m: any) => m.left !== pair.left), { left: pair.left, right: e.target.value }];
+                          setAnswers({ ...answers, [q.id]: newMatches });
+                        }}
+                      >
+                        <option value="">-- Pilih Pasangan --</option>
+                        {q.options.pairs.map((p: any) => (
+                          <option key={p.right} value={p.right}>{p.right}</option>
+                        ))}
+                      </select>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+
           </div>
         </div>
       ))}
 
-      <button
-        onClick={handleSubmit}
-        disabled={loading}
-        className="w-full bg-blue-600 text-white p-4 rounded-xl font-bold text-lg hover:bg-blue-700 transition shadow-lg shadow-blue-600/30 disabled:bg-slate-400"
-      >
-        {loading ? 'Menilai Jawaban...' : 'Kumpulkan Jawaban'}
+      <button onClick={handleSubmit} disabled={loading} className="w-full bg-blue-600 text-white p-5 rounded-2xl font-bold text-lg hover:bg-blue-700 transition shadow-xl shadow-blue-600/30 disabled:bg-slate-400">
+        {loading ? 'Menilai Jawaban...' : 'Kumpulkan Jawaban Kuis'}
       </button>
     </div>
   )
