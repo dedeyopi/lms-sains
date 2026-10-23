@@ -3,6 +3,7 @@ import { useState, use } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import RichTextEditor from '@/app/components/RichTextEditor' // <-- Import Editor
 
 export default function NewLessonPage({
   params,
@@ -14,10 +15,39 @@ export default function NewLessonPage({
   const [contentType, setContentType] = useState('text')
   const [content, setContent] = useState('')
   const [orderIndex, setOrderIndex] = useState(1)
-  const [estimatedMinutes, setEstimatedMinutes] = useState(10) // <-- State Baru
+  const [estimatedMinutes, setEstimatedMinutes] = useState(10)
+  
+  // State untuk Gambar Sampul (Cover)
+  const [imageUrl, setImageUrl] = useState('')
+  const [uploading, setUploading] = useState(false)
+  
   const [loading, setLoading] = useState(false)
   const router = useRouter()
   const supabase = createClient()
+
+  // Fungsi Upload Gambar Sampul
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    setUploading(true)
+    const fileExt = file.name.split('.').pop()
+    const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`
+    
+    const { error: uploadError } = await supabase.storage
+      .from('lesson-images')
+      .upload(fileName, file)
+
+    if (uploadError) {
+      alert('Gagal mengunggah gambar: ' + uploadError.message)
+      setUploading(false)
+      return
+    }
+
+    const { data } = supabase.storage.from('lesson-images').getPublicUrl(fileName)
+    setImageUrl(data.publicUrl)
+    setUploading(false)
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -29,7 +59,8 @@ export default function NewLessonPage({
       content_type: contentType,
       content,
       order_index: orderIndex,
-      estimated_minutes: estimatedMinutes, // <-- Simpan ke database
+      estimated_minutes: estimatedMinutes,
+      image_url: imageUrl // Simpan URL gambar sampul
     })
 
     if (error) {
@@ -60,9 +91,35 @@ export default function NewLessonPage({
               <input
                 type="text" required
                 value={title} onChange={(e) => setTitle(e.target.value)}
-                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition font-medium"
+                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition font-medium"
                 placeholder="Contoh: Rantai Makanan dan Jaring-jaring"
               />
+            </div>
+
+            {/* FITUR UPLOAD GAMBAR SAMPUL */}
+            <div>
+              <label className="block text-sm font-bold text-slate-700 mb-2">Gambar Sampul (Opsional)</label>
+              <div className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-slate-300 border-dashed rounded-xl hover:border-blue-400 transition bg-slate-50 relative overflow-hidden">
+                {imageUrl ? (
+                  <div className="text-center w-full">
+                    <img src={imageUrl} alt="Preview" className="mx-auto h-40 object-cover rounded-lg mb-3 shadow-sm" />
+                    <button type="button" onClick={() => setImageUrl('')} className="text-sm font-bold text-red-500 hover:text-red-700">
+                      Hapus Gambar
+                    </button>
+                  </div>
+                ) : (
+                  <div className="space-y-1 text-center">
+                    <div className="text-3xl mb-2">🖼️</div>
+                    <div className="flex text-sm text-slate-600 justify-center">
+                      <label htmlFor="file-upload" className="relative cursor-pointer bg-white rounded-md font-bold text-blue-600 hover:text-blue-500 focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-blue-500 px-3 py-1 shadow-sm border border-slate-200">
+                        <span>{uploading ? 'Mengunggah...' : 'Pilih Gambar'}</span>
+                        <input id="file-upload" name="file-upload" type="file" accept="image/*" className="sr-only" onChange={handleImageUpload} disabled={uploading} />
+                      </label>
+                    </div>
+                    <p className="text-xs text-slate-500">PNG, JPG, JPEG up to 5MB</p>
+                  </div>
+                )}
+              </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -70,7 +127,7 @@ export default function NewLessonPage({
                 <label className="block text-sm font-bold text-slate-700 mb-2">Tipe Konten</label>
                 <select
                   value={contentType} onChange={(e) => setContentType(e.target.value)}
-                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition font-medium"
+                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition font-medium"
                 >
                   <option value="text">📝 Teks Bacaan</option>
                   <option value="video_link">🎥 Video YouTube</option>
@@ -86,11 +143,12 @@ export default function NewLessonPage({
                 <input
                   type="number" required min={1}
                   value={estimatedMinutes} onChange={(e) => setEstimatedMinutes(parseInt(e.target.value))}
-                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition font-medium"
+                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition font-medium"
                 />
               </div>
             </div>
 
+            {/* BAGIAN KONTEN DINAMIS */}
             <div>
               <label className="block text-sm font-bold text-slate-700 mb-2">
                 {contentType === 'text' && 'Isi Teks Materi'}
@@ -100,16 +158,21 @@ export default function NewLessonPage({
                 {contentType === 'external_link' && 'URL Tautan Eksternal'}
                 {contentType === 'quiz' && 'Instruksi Kuis (Opsional)'}
               </label>
-              <textarea
-                value={content} onChange={(e) => setContent(e.target.value)}
-                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition font-mono text-sm"
-                rows={contentType === 'text' ? 10 : 3} required={contentType !== 'quiz'}
-                placeholder={
-                  contentType === 'text' ? 'Tuliskan materi lengkap di sini...' :
-                  contentType === 'quiz' ? 'Contoh: Kerjakan soal berikut dengan teliti.' :
-                  'https://...'
-                }
-              />
+              
+              {/* Jika Teks Bacaan, Gunakan RichTextEditor */}
+              {contentType === 'text' ? (
+                <RichTextEditor value={content} onChange={setContent} />
+              ) : (
+                <textarea
+                  value={content} onChange={(e) => setContent(e.target.value)}
+                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition font-mono text-sm leading-relaxed"
+                  rows={contentType === 'quiz' ? 3 : 5} required={contentType !== 'quiz'}
+                  placeholder={
+                    contentType === 'quiz' ? 'Contoh: Kerjakan soal berikut dengan teliti.' :
+                    'https://...'
+                  }
+                />
+              )}
             </div>
 
             <div>
@@ -122,7 +185,7 @@ export default function NewLessonPage({
             </div>
 
             <button
-              type="submit" disabled={loading}
+              type="submit" disabled={loading || uploading}
               className="w-full bg-teal-600 text-white py-4 rounded-xl font-bold text-lg hover:bg-teal-700 transition shadow-lg shadow-teal-600/30 disabled:bg-slate-400 mt-4"
             >
               {loading ? 'Menyimpan...' : 'Simpan Pelajaran'}
