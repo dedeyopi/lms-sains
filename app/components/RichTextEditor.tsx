@@ -1,12 +1,10 @@
 'use client'
 import { useState, useMemo } from 'react'
+import { createClient } from '@/lib/supabase/client'
 import dynamic from 'next/dynamic'
-import 'react-quill-new/dist/quill.snow.css'
+import 'react-quill-new/dist/quill.snow.css' // <-- 1. Ganti CSS menjadi react-quill-new
 
 const ReactQuill = dynamic(() => import('react-quill-new'), { ssr: false })
-
-// Dynamic import karena React Quill tidak mendukung Server-Side Rendering (SSR) secara langsung
-const ReactQuill = dynamic(() => import('react-quill'), { ssr: false })
 
 export default function RichTextEditor({ 
   value, 
