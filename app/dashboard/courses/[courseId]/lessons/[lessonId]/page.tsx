@@ -131,7 +131,7 @@ export default async function StudentLessonPage({
           
           {lesson.content_type === 'text' && (
             <div className="prose prose-slate max-w-none text-slate-700 leading-relaxed">
-              {lesson.content.split('\n').map((paragraph: string, i: number) => (
+              {lesson.content.dangerouslySetInnerHTML.map((paragraph: string, i: number) => (
                 <p key={i} className="mb-6 text-lg">{paragraph}</p>
               ))}
             </div>
